@@ -1,5 +1,5 @@
 # Vid-IoT
-Distributed Video-IoT framework to support modern demands for high fidelity, high throghput and automatable video feeds.
+Distributed Video-IoT framework to support modern demands for high fidelity, high throughput and automatable video feeds.
 
 <p align="center">
 <img src="https://github.com/rbccps-iisc/Vid-IoT/blob/master/docs/vidiot_arch.png">
