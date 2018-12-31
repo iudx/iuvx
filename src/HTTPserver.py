@@ -5,13 +5,13 @@ import signal
 from flask import Flask , request
 import logging
 import paho.mqtt.client as mqtt
-
+import time
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 app = Flask(__name__)
 broker_address="localhost"
 client = mqtt.Client("httpserver")
-
+rtmp_link=""
 
 def on_message(client, userdata, message):
 	global rtmp_link
@@ -23,14 +23,18 @@ def on_message(client, userdata, message):
 @app.route('/reqstream')
 def reqstream():
 	global client, rtmp_link
+	rtmp_link=""
 	client.loop_start()
 	stream_id  = request.args.get('id', None)
 	user_ip=request.remote_addr
 	client.publish("stream/request", user_ip+" "+stream_id)
 	client.subscribe("lbsresponse/rtmp")
-	time.sleep(60)
+	time.sleep(10)
 	client.loop_stop()
-	return rtmp_link
+	if rtmp_link=="":
+		return "No Stream Available"
+	else:
+		return rtmp_link
 
 
 @app.route('/streams')
@@ -56,7 +60,6 @@ def stream():
 def origin():
 	global client
 	client.loop_start()
-	print "Entered Origin"
 	origin_ip  = request.args.get('ip', None)
 	origin_id  = request.args.get('id', None)
 	origin_op=request.args.get('opr', None)
@@ -97,7 +100,7 @@ def dist():
 if __name__=="__main__":
 	client.connect(broker_address)
 	client.on_message=on_message
-	app.run(host="0.0.0.0",debug = True)
+	app.run(host="0.0.0.0",threaded=True,debug = True)
 
 
 

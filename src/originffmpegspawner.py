@@ -1,13 +1,22 @@
 import paho.mqtt.client as mqtt
-import pymongo
 import os
 import sys
 import signal
-from flask import Flask , request
 import time
 import requests
 import socket
 import subprocess as sp
+import threading
+
+class DefunctCleaner(threading.Thread):
+  def __init__(self):
+    threading.Thread.__init__(self,target=sys.exit)
+  def run(self):
+	while(True):
+		try:
+			os.waitpid(-1, os.WNOHANG)
+		except Exception as exc:
+			continue
 
 origin_ffmpeg_spawn=[0,""]
 origin_ffmpeg_dist=[0,""]
@@ -26,11 +35,11 @@ def on_message(client, userdata, message):
 			elif topic=="origin/ffmpeg/dist/spawn":
 				origin_ffmpeg_dist[0]=1
 				origin_ffmpeg_dist[1]=str(msg[0])+" "+str(msg[1])+" "+str(msg[2])
-				
-				
-
 if __name__=="__main__":
-	broker_address="localhost"
+	t1=DefunctCleaner()
+	t1.setDaemon(True)
+	t1.start()
+	broker_address="10.156.14.141"
 	client = mqtt.Client("ffmpegspawner") 
 	client.connect(broker_address)
 	client.on_message=on_message #connect to broker
@@ -46,11 +55,12 @@ if __name__=="__main__":
 			client.publish("db/origin/ffmpeg/stream/spawn"," ".join(cmd) + " "+str(proc.pid)+ " "+ str(msg[0])+" "+str(msg[1])+" "+str(msg[2]))
 			origin_ffmpeg_spawn=[0,""]
 		elif origin_ffmpeg_dist[0]==1:
-			msg=origin_ffmpeg_spawn[1].split()
+			msg=origin_ffmpeg_dist[1].split()
 			cmd=["/usr/bin/ffmpeg", "-i", "rtmp://"+str(msg[0]).strip()+":1935/dynamic/"+str(msg[2]).strip(), "-an", "-vcodec", "copy", "-f","flv", "rtmp://"+str(msg[1]).strip()+":1935/dynamic/"+str(msg[2]).strip()]
 			proc=sp.Popen(cmd,stdout=sp.PIPE, stderr=sp.PIPE,shell=False)
 			print "FFMPEG spawned for "+str(cmd[2])+"----------->"+str(cmd[-1])
-			client.publish("db/ffmpeg/origin/dist/spawn"," ".join(cmd) + " "+str(proc.pid)+ " "+ str(msg[0])+" "+str(msg[1])+" "+str(msg[2]))
+			print " ".join(cmd)
+			client.publish("db/origin/ffmpeg/dist/spawn"," ".join(cmd) + " "+str(proc.pid)+ " "+ str(msg[0])+" "+str(msg[1])+" "+str(msg[2]))
 			origin_ffmpeg_dist=[0,""]
 	client.loop_stop()
 

@@ -4,7 +4,7 @@ import paho.mqtt.client as mqtt
 import socket
 
 if __name__=="__main__":
-	broker_address="localhost"
+	broker_address="10.156.14.141"
 	client = mqtt.Client("originstat") 
 	client.connect(broker_address)#connect to broker
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

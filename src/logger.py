@@ -4,7 +4,7 @@ import paho.mqtt.client as mqtt
 
 def on_message(client, userdata, message):
 	with open("logs.txt","a+") as f:
-		f.write(str(message.payload.decode("utf-8")))
+		f.write(str(message.payload.decode("utf-8"))+"\n")
 
 
 if __name__=="__main__":
