@@ -7,6 +7,7 @@ import signal
 import time
 import pymongo
 import datetime
+from MQTTPubSub import MQTTPubSub
 
 
 
@@ -27,7 +28,7 @@ insert_stream=[0,""]
 delete_stream=[0,""]
 reqstream=[0,""]
 
-#ORMs
+
 
 
 #Update Origin, Dists and Streams
@@ -99,6 +100,16 @@ def on_message(client, userdata, message):
         if ip in ndist.keys():
             ndist[ip]=clients
      
+#MQTT Params
+
+mqttServerParams = {}
+mqttServerParams["url"] = "127.0.0.1"
+mqttServerParams["port"] = 1883
+mqttServerParams["timeout"] = 60
+mqttServerParams["topic"] = [("origin/stat",0),("dist/stat",0),("origin/add",0),("origin/delete",0),("dist/add",0),("dist/delete",0),("stream/add",0),("stream/delete",0),("stream/request",0),("db/origin/ffmpeg/dist/spawn",0),("db/origin/ffmpeg/stream/spawn",0)]
+mqttServerParams["onMessage"] = on_message
+client = MQTTPubSub(mqttServerParams)
+
 
 if __name__=="__main__":
     mongoclient=pymongo.MongoClient('mongodb://localhost:27017/')
@@ -107,12 +118,7 @@ if __name__=="__main__":
     col2=mydb["Distribution_Servers"]
     col3=mydb["Streams"]
     col4=mydb["Ffmpeg_Procs"]
-    broker_address="localhost"
-    client = mqtt.Client("loadbalancer") 
-    client.connect(broker_address)
-    client.on_message=on_message #connect to broker
-    client.loop_start()
-    client.subscribe([("origin/stat",0),("dist/stat",0),("origin/add",0),("origin/delete",0),("dist/add",0),("dist/delete",0),("stream/add",0),("stream/delete",0),("stream/request",0),("db/origin/ffmpeg/dist/spawn",0),("db/origin/ffmpeg/stream/spawn",0)])
+    client.run()
     if col1.count()!=0:
         for i in col1.find():
             norigin[i["Origin_IP"]]=0
@@ -154,14 +160,14 @@ if __name__=="__main__":
         elif origin_ffmpeg_stream[0]:
             msg=origin_ffmpeg_stream[1].split()
             client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(" ".join(msg)))
-            cmd=" ".join(msg[:9])
-            PID=msg[9]
-            TO_IP=msg[10]
-            FROM_IP=msg[12]
-            Stream_ID=msg[11]
+            cmd=" ".join(msg[:11])
+            PID=msg[11]
+            TO_IP=msg[12]
+            FROM_IP=msg[14]
+            Stream_ID=msg[13]
             col4.insert_one({"CMD":cmd,"PID":PID,"TO_IP":TO_IP,"FROM_IP":FROM_IP,"Stream_ID":Stream_ID})
-            col3.update_one({"Stream_IP":msg[12]},{"$set":{"Origin_IP":msg[10]}},upsert=True)
-            col1.update_one({"Origin_IP":msg[10]},{"$set":{"Stream_ID":msg[11]}},upsert=True)
+            col3.update_one({"Stream_IP":msg[14]},{"$set":{"Origin_IP":msg[12]}},upsert=True)
+            col1.update_one({"Origin_IP":msg[12]},{"$set":{"Stream_ID":msg[13]}},upsert=True)
             origin_ffmpeg_stream=[0,""]
         elif insert_dist[0]:
             dist_ips,dist_ids=search_dist()
@@ -183,24 +189,28 @@ if __name__=="__main__":
             else:
                 for i in col4.find():
                     if i["TO_IP"]==msg[1]:
-                        client.publish("origin/ffmpeg/kill",str(i["FROM_IP"])+" "+str(i["PID"]))
+                        client.publish("origin/ffmpeg/kill",str(i["FROM_IP"])+" "+str(i["CMD"]))
                 col4.delete_many({"TO_IP":msg[1]})
                 col2.delete_one({"Dist_IP":msg[1],"Dist_ID":msg[0]})
                 print "Distribution Deleted----> ID:"+str(msg[0])+" IP:"+str(msg[1])
             del ndist[msg[1]]
             delete_dist=[0,""]
         elif insert_stream[0]:
-            stream_ips,stream_ids=search_stream()
-            msg=insert_stream[1].split()
-            client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(" ".join(msg)))
-            if msg[0] not in stream_ids and msg[1] not in stream_ips:
-                print str(sorigin)+" "+str(msg[0])+" "+str(msg[1])
-                client.publish("origin/ffmpeg/stream/spawn",str(sorigin)+" "+str(msg[0])+" "+str(msg[1]))
-                col3.insert_one({"Stream_IP":msg[1],"Stream_ID":msg[0],"Origin_IP":""})
-                print "Stream Added----> ID:"+str(msg[0])+" IP:"+str(msg[1])
+            if len(norigin)==0:
+                print "No Origin Server Present"
+                insert_stream=[0,""]
             else:
-                print "Stream already present----> ID:"+str(msg[0])+" IP:"+str(msg[1])
-            insert_stream=[0,""]
+                stream_ips,stream_ids=search_stream()
+                msg=insert_stream[1].split()
+                client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(" ".join(msg)))
+                if msg[0] not in stream_ids and msg[1] not in stream_ips:
+                    print str(sorigin)+" "+str(msg[0])+" "+str(msg[1])
+                    client.publish("origin/ffmpeg/stream/spawn",str(sorigin)+" "+str(msg[0])+" "+str(msg[1]))
+                    col3.insert_one({"Stream_IP":msg[1],"Stream_ID":msg[0],"Origin_IP":""})
+                    print "Stream Added----> ID:"+str(msg[0])+" IP:"+str(msg[1])
+                else:
+                    print "Stream already present----> ID:"+str(msg[0])+" IP:"+str(msg[1])
+                insert_stream=[0,""]
         elif delete_stream[0]:
             stream_ips,stream_ids=search_stream()
             msg=delete_stream[1].split()
@@ -210,9 +220,9 @@ if __name__=="__main__":
             else:
                 for i in col4.find():
                     if str(i["FROM_IP"])==msg[1]:
-                        client.publish("origin/ffmpeg/kill",str(i["TO_IP"])+" "+str(i["PID"]))
+                        client.publish("origin/ffmpeg/kill",str(i["TO_IP"])+" "+str(i["CMD"]))
                     if str(i["Stream_ID"])==msg[0]:
-                        client.publish("origin/ffmpeg/kill",str(i["FROM_IP"])+" "+str(i["PID"]))
+                        client.publish("origin/ffmpeg/kill",str(i["FROM_IP"])+" "+str(i["CMD"]))
                 col3.delete_one({"Stream_IP":msg[1],"Stream_ID":msg[0]})
                 col4.delete_many({"Stream_ID":msg[0]})
                 col1.update_one({"Stream_ID":msg[0]},{"$set":{"Stream_ID":""}},upsert=True)
@@ -245,13 +255,13 @@ if __name__=="__main__":
             msg=origin_ffmpeg_dist[1].split()
             print msg
             client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(" ".join(msg)))
-            cmd=" ".join(msg[:9])
-            PID=msg[9]
-            TO_IP=msg[11]
-            FROM_IP=msg[10]
-            Stream_ID=msg[12]
+            cmd=" ".join(msg[:11])
+            PID=msg[11]
+            TO_IP=msg[13]
+            FROM_IP=msg[12]
+            Stream_ID=msg[14]
             col4.insert_one({"CMD":cmd,"PID":PID,"TO_IP":TO_IP,"FROM_IP":FROM_IP,"Stream_ID":Stream_ID})
-            client.publish("lbsresponse/rtmp",str(cmd.split()[-1]))
+            client.publish("lbsresponse/rtmp",str(cmd.split()[-2]))
             origin_ffmpeg_dist=[0,""]
 
 

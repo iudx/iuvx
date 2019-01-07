@@ -5,13 +5,11 @@ import signal
 import os
 import subprocess as sp
 import time
-
+from MQTTPubSub import MQTTPubSub
 origin_ffmpeg_kill=[0,""]
 origin_ffmpeg_killall=[0,""]
 
-def get_pname(id):
-		p = sp.Popen(["ps -o cmd= {}".format(id)], stdout=sp.PIPE, shell=True)
-		return str(p.communicate()[0])
+
 
 def on_message(client, userdata, message):
 	msg=str(message.payload.decode("utf-8")).split()
@@ -30,29 +28,28 @@ def on_message(client, userdata, message):
 	s.close()
 
 
-
+#MQTT Params
+mqttServerParams = {}
+mqttServerParams["url"] = "10.156.14.141"
+mqttServerParams["port"] = 1883
+mqttServerParams["timeout"] = 60
+mqttServerParams["topic"] = [("origin/ffmpeg/kill",0),("origin/ffmpeg/killall",0)]
+mqttServerParams["onMessage"] = on_message
+client = MQTTPubSub(mqttServerParams)
 
 if __name__=="__main__":
-	broker_address="10.156.14.141"
-	client = mqtt.Client("ffmpegcleaner")
-	client.connect(broker_address)
-	client.on_message=on_message #connect to broker
-	client.loop_start()
-	client.subscribe([("origin/ffmpeg/kill",0),("origin/ffmpeg/killall",0)])
+	FNULL = open(os.devnull, 'w')
+	client.run()
 	while(True):
 		if origin_ffmpeg_kill[0]==1:
-			os.kill(int(origin_ffmpeg_kill[1]),signal.SIGTERM)
+			sp.Popen(["pkill","-f",origin_ffmpeg_kill[1]],stdin=FNULL,stdout=FNULL,stderr=FNULL,shell=False)
 			time.sleep(1)
 			origin_ffmpeg_kill=[0,""]
 		elif origin_ffmpeg_killall[0]==1:
-			allprocs=psutil.pids()
-			print allprocs
-			for i in allprocs:
-				print get_pname(i)
-				if "/usr/bin/ffmpeg" in get_pname(i):
-					os.kill(int(i),signal.SIGTERM)
+			for proc in psutil.process_iter():
+				if "/usr/bin/ffmpeg" in proc.name():
+					os.kill(int(proc.pid),signal.SIGTERM)
 					time.sleep(1)
 			origin_ffmpeg_killall=[0,""]
 		else:
 			continue
-	client.loop_stop()
