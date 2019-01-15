@@ -7,6 +7,7 @@ import logging
 import paho.mqtt.client as mqtt
 from MQTTPubSub import MQTTPubSub
 import time
+import json
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 app = Flask(__name__)
@@ -28,7 +29,8 @@ def reqstream():
 	stream_id  = request.args.get('id', None)
 	user_ip=request.remote_addr
 	print "Request Stream.....User: "+ str(user_ip)+" Stream: "+ str(stream_id)
-	client.publish("stream/request", user_ip+" "+stream_id)
+	reqdict={"User_IP":user_ip,"Stream_ID":stream_id}
+	client.publish("stream/request", json.dumps(reqdict))
 	time.sleep(10)
 	if rtmp_link=="":
 		return "No Stream Available"
@@ -44,11 +46,13 @@ def stream():
 	stream_op=request.args.get('opr', None)
 	if stream_op=="add":
 		print "Added Stream "+ str(stream_id)
-		client.publish("stream/add",str(stream_id)+" "+str(stream_ip))
+		streamadddict={"Stream_ID":stream_id,"Stream_IP":stream_ip}
+		client.publish("stream/add",json.dumps(streamadddict))
 		return "Stream added "+ stream_id +" "+ stream_ip
 	elif stream_op=="delete":
 		print "Deleted Stream "+ str(stream_id)
-		client.publish("stream/delete",str(stream_id)+" "+str(stream_ip))
+		streamdeldict={"Stream_ID":stream_id,"Stream_IP":stream_ip}
+		client.publish("stream/delete",json.dumps(streamdeldict))
 		return "Stream deleted "+ stream_id +" "+ stream_ip
 	else:
 		return "Incorrect request"
@@ -61,11 +65,13 @@ def origin():
 	origin_op=request.args.get('opr', None)
 	if origin_op=="add":
 		print "Added Origin Server " +str(origin_ip)
-		client.publish("origin/add",str(origin_id)+" "+str(origin_ip))
+		originadddict={"Origin_ID":origin_id,"Origin_IP":origin_ip}
+		client.publish("origin/add",json.dumps(originadddict))
 		return "ORIGIN server added "+ origin_id +" "+ origin_ip
 	elif origin_op=="delete":
 		print "Deleted Origin Server " +str(origin_ip)
-		client.publish("origin/delete",str(origin_id)+" "+str(origin_ip))
+		origindeldict={"Origin_ID":origin_id,"Origin_IP":origin_ip}
+		client.publish("origin/delete",json.dumps(origindeldict))
 		return "ORIGIN server deleted "+ origin_id +" "+ origin_ip
 	else:
 		return "Incorrect request"
@@ -79,11 +85,13 @@ def dist():
 	dist_op=request.args.get('opr', None)
 	if dist_op=="add":
 		print "Added Distribution "+str(dist_ip)
-		client.publish("dist/add",str(dist_id)+" "+str(dist_ip))
+		distadddict={"Dist_ID":dist_id,"Dist_IP":dist_ip}
+		client.publish("dist/add",json.dumps(distadddict))
 		return "DIST server added "+ dist_id +" "+ dist_ip
 	elif dist_op=="delete":
 		print "Deleted Distribution "+str(dist_ip)
-		client.publish("dist/delete",str(dist_id)+" "+str(dist_ip))
+		distdeldict={"Dist_ID":dist_id,"Dist_IP":dist_ip}
+		client.publish("dist/delete",json.dumps(distdeldict))
 		return "DIST server deleted "+ dist_id +" "+ dist_ip
 	else:
 		return "Incorrect request"

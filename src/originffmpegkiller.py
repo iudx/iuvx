@@ -5,22 +5,27 @@ import signal
 import os
 import subprocess as sp
 import time
+import json
 from MQTTPubSub import MQTTPubSub
+
+
 origin_ffmpeg_kill=[0,""]
 origin_ffmpeg_killall=[0,""]
 
 
 
 def on_message(client, userdata, message):
-	msg=str(message.payload.decode("utf-8")).split()
+	msg=str(message.payload.decode("utf-8"))
 	topic=str(message.topic.decode("utf-8"))
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	s.connect(("8.8.8.8", 80))
-	print msg,topic
-	if msg[0]==str(s.getsockname()[0]):
+	ddict=json.loads(msg)
+	print ddict,topic
+	if ddict["Origin_IP"]==str(s.getsockname()[0]):
 		if topic=="origin/ffmpeg/kill":
+			print ddict["CMD"]
 			origin_ffmpeg_kill[0]=1
-			origin_ffmpeg_kill[1]=msg[1]
+			origin_ffmpeg_kill[1]=ddict
 		elif topic=="origin/ffmpeg/killall":
 			origin_ffmpeg_killall[0]=1
 		else:
@@ -40,16 +45,17 @@ client = MQTTPubSub(mqttServerParams)
 if __name__=="__main__":
 	FNULL = open(os.devnull, 'w')
 	client.run()
+	print "Started"
 	while(True):
 		if origin_ffmpeg_kill[0]==1:
-			sp.Popen(["pkill","-f",origin_ffmpeg_kill[1]],stdin=FNULL,stdout=FNULL,stderr=FNULL,shell=False)
+			print 
+			print origin_ffmpeg_kill[1]["CMD"].split()[1:-1]
+			sp.Popen(["pkill","-f"," ".join(origin_ffmpeg_kill[1]["CMD"].split()[1:-1])],stdin=FNULL,stdout=FNULL,stderr=FNULL,shell=False)
 			time.sleep(1)
 			origin_ffmpeg_kill=[0,""]
 		elif origin_ffmpeg_killall[0]==1:
-			for proc in psutil.process_iter():
-				if "/usr/bin/ffmpeg" in proc.name():
-					os.kill(int(proc.pid),signal.SIGTERM)
-					time.sleep(1)
+			sp.Popen(["pkill","-f","/usr/bin/ffmpeg"],stdin=FNULL,stdout=FNULL,stderr=FNULL,shell=False)
+			time.sleep(1)
 			origin_ffmpeg_killall=[0,""]
 		else:
 			continue
