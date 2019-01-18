@@ -1,23 +1,29 @@
 import requests
 import xmltodict as xd
+import paho.mqtt.client as mqtt
 import socket
 # import pymongo
 import time
 import threading
 from MQTTPubSub import MQTTPubSub
+import time
 import collections
 import json
+import threading
 import Queue
 from influxdb import InfluxDBClient
 
 
 class Statter():
     """Statter Class to check status of NGINX based FFMPEG streams"""
+
     def __init__(self, statPageURL, mqttServer, mqttTopics):
         """ Internal Defs"""
         self.statPageURL = statPageURL
         self.registeredStreams = {}
         self.missingsQ = Queue.Queue()
+        self.startFlag = False
+        self.waitPeriod = 30
         """ Origin Server IP Address, currently LAN IP """
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -36,18 +42,16 @@ class Statter():
         tsDBPort = 8086
         tsDBUname = "root"
         tsDBPwd = "root"
-        self.influxClient = InfluxDBClient(tsDBUrl, tsDBPort, tsDBUname, tsDBPwd, self.appName)
-        self.influxClient.create_database(self.appName)
+        appName = "Statter"
+        self.influxClient = InfluxDBClient(
+            tsDBUrl, tsDBPort, tsDBUname, tsDBPwd, appName)
 
-
-    def addNewStream(self, streamId, stream_ip):
-        self.registeredStreams[streamId] = {"Stream_IP": stream_ip,
-                                            "Status": 1, "Revived": 0, "Timer": None}
-
+    def addNewStream(self, stream_id, stream_ip):
+        self.registeredStreams[stream_id] = {"Stream_IP": stream_ip,
+                                             "Status": 1}
 
     def deleteStream(self, streamId):
         self.registeredStreams.pop(streamId)
-
 
     def on_message(self, client, userdata, message):
         msg = str(message.payload.decode("utf-8"))
@@ -62,9 +66,16 @@ class Statter():
                     self.deleteStream(msgDict["Stream_ID"])
                 if topic == "origin/ffmpeg/killall":
                     self.registeredStreams = []
+                if topic == "lb/request/allstreams":
+                    print("Initialized Streams")
+                    streamList = msgDict["Stream_List"]
+                    print(streamList)
+                    for stream in streamList:
+                        self.addNewStream(
+                            stream["Stream_ID"], stream["Stream_IP"])
+                        self.startFlag = True
         except Exception as e:
             print(e)
-
 
     def stat(self):
         while(True):
@@ -75,10 +86,12 @@ class Statter():
                 stats = stats["rtmp"]["server"]["application"][1]["live"]["stream"]
             except Exception as e:
                 print(e)
+
             if isinstance(stats, collections.OrderedDict):
                 statList.append(stats)
             elif isinstance(stats, list):
                 statList = stats
+
             try:
                 ''' Clear status '''
                 for stream in self.registeredStreams:
@@ -89,39 +102,38 @@ class Statter():
                         self.registeredStreams[stat["name"]]["Status"] = 1
             except Exception as e:
                 print(e)
+
             time.sleep(0.5)
 
+    def resetRevived(self, streamId):
+        self.registeredStreams[streamId]["Revived"] = 0
 
     def checkStat(self):
         while(True):
             for stream in self.registeredStreams:
                 if self.registeredStreams[stream]["Status"] == 0:
                     self.missingsQ.put(stream)
-                    self.registeredStreams["Timer"] = threading.Timer(
-                        self.resetRevived, args=[stream])
+                    self.registeredStreams["Timer"] = threading.Timer(self.waitPeriod,
+                                                                      self.resetRevived, args=[stream])
+                    self.registeredStreams["Timer"]().start()
+
             time.sleep(1)
-
-
-    def resetRevived(self, streamId):
-        self.registeredStreams[streamId]["Revived"] = 0
-
 
     def pub(self):
         while(True):
             if(self.missingsQ.empty() != True):
                 stream = self.missingsQ.get()
-                if(self.registeredStreams[stream]["Revived"] == 0):
-                    self.registeredStreams[stream]["Revived"] = 1
-                    streamId = stream
-                    streamIp = self.registeredStreams[stream]["Stream_IP"]
-                    streamDict = {"Stream_IP": streamIp,
-                                  "Stream_ID": streamId, "Origin_IP": self.origin_IP}
-                    print("Publishing")
-                    print(streamDict)
-                    self.mqttc.publish(
-                        "db/origin/ffmpeg/respawn", json.dumps(streamDict))
-            time.sleep(0.1)
-
+                print("Missing")
+                print(self.registeredStreams[stream])
+                streamId = stream
+                streamIp = self.registeredStreams[stream]["Stream_IP"]
+                streamDict = {"Stream_IP": streamIp,
+                              "Stream_ID": streamId, "Origin_IP": self.origin_IP}
+                print("Publishing")
+                print(streamDict)
+                self.mqttc.publish("db/origin/ffmpeg/respawn",
+                                   json.dumps(streamDict))
+            time.sleep(1)
 
     def logger(self):
         ''' Replace with publisher here '''
@@ -145,9 +157,12 @@ class Statter():
                     ''' Append BitRate here '''
                     self.influxClient.write_points(series, time_precision='n')
 
-
     def start(self):
         self.mqttc.run()
+        time.sleep(0.5)
+        self.mqttc.publish("request/allstreams", self.origin_IP)
+        while(self.startFlag == False):
+            time.sleep(0.5)
         ''' Start the stat thread '''
         self.statThread = threading.Thread(target=self.stat)
         self.statThread.daemon = True
@@ -180,6 +195,8 @@ if __name__ == "__main__":
     mqttServer = "10.156.14.141"
     mqttTopics = [("origin/ffmpeg/stream/stat/spawn", 0),
                   ("origin/ffmpeg/kill", 0),
+                  ("lb/request/allstreams", 0),
                   ("origin/ffmpeg/killall", 0)]
     statter = Statter(statPageURL, mqttServer, mqttTopics)
+
     statter.start()
