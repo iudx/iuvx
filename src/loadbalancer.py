@@ -30,8 +30,10 @@ insert_stream=[0,""]
 delete_stream=[0,""]
 reqstream=[0,""]
 origin_ffmpeg_respawn=[0,""]
-
-
+archive_stream_add=[0,""]
+archive_stream_del=[0,""]
+req_all_streams=[0,""]
+origin_ffmpeg_dist_respawn=[0,""]
 
 #Update Origin, Dists and Streams
 def search_origin():
@@ -60,9 +62,10 @@ def search_stream():
 
 #On_message paho.mqtt
 def on_message(client, userdata, message):
-    global norigin,ndist,insert_dist,insert_origin,insert_stream,delete_stream,delete_origin,delete_dist,reqstream,origin_ffmpeg_dist,origin_ffmpeg_stream
+    global origin_ffmpeg_dist_respawn, archive_stream_add,archive_stream_del,req_all_streams,norigin,origin_ffmpeg_respawn,ndist,insert_dist,insert_origin,insert_stream,delete_stream,delete_origin,delete_dist,reqstream,origin_ffmpeg_dist,origin_ffmpeg_stream
     msg=str(message.payload.decode("utf-8"))
     topic=str(message.topic.decode("utf-8"))
+    print topic
     if topic=="origin/add":
         print topic+" "+msg
     	insert_origin[0]=1
@@ -114,6 +117,18 @@ def on_message(client, userdata, message):
     elif topic=="db/origin/ffmpeg/respawn":
         origin_ffmpeg_respawn[0]=1
         origin_ffmpeg_respawn[1]=msg
+    elif topic=="db/dist/ffmpeg/respawn":
+        origin_ffmpeg_dist_respawn[0]=1
+        origin_ffmpeg_dist_respawn[1]=msg
+    elif topic=="archive/add":
+        archive_stream_add[0]=1
+        archive_stream_add[1]=msg
+    elif topic=="archive/delete":
+        archive_stream_del[0]=1
+        archive_stream_del[1]=msg
+    elif topic=="request/allstreams":
+        req_all_streams[0]=1
+        req_all_streams[1]=msg
         # print topic+" "+msg
             # diststreams[ip]=streams
      
@@ -123,58 +138,9 @@ mqttServerParams = {}
 mqttServerParams["url"] = "127.0.0.1"
 mqttServerParams["port"] = 1883
 mqttServerParams["timeout"] = 60
-mqttServerParams["topic"] = [("db/origin/ffmpeg/respawn",0),("origin/stat",0),("dist/stat",0),("origin/add",0),("origin/delete",0),("dist/add",0),("dist/delete",0),("stream/add",0),("stream/delete",0),("stream/request",0),("db/origin/ffmpeg/dist/spawn",0),("db/origin/ffmpeg/stream/spawn",0)]
+mqttServerParams["topic"] = [("db/dist/ffmpeg/respawn",0),("archive/delete",0),("request/allstreams",0),("archive/add",0),("db/origin/ffmpeg/respawn",0),("origin/stat",0),("dist/stat",0),("origin/add",0),("origin/delete",0),("dist/add",0),("dist/delete",0),("stream/add",0),("stream/delete",0),("stream/request",0),("db/origin/ffmpeg/dist/spawn",0),("db/origin/ffmpeg/stream/spawn",0)]
 mqttServerParams["onMessage"] = on_message
 client = MQTTPubSub(mqttServerParams)
-
-
-# class StreamChecker(threading.Thread):
-#   def __init__(self,col):
-#     threading.Thread.__init__(self,target=sys.exit)
-#   def run(self):
-#     while(True):
-#         time.sleep(120)
-#         if col.count()!=0:
-#             if len(ndist)!=0:
-#                 dbdiststreams={}
-#                 for j in col.find():
-#                     if j["Dist_IP"] not in dbdiststreams.keys():
-#                         dbdiststreams[j["Dist_IP"]]=[j["Stream_ID"]]
-#                     else:
-#                         dbdiststreams[j["Dist_IP"]].append(j["Stream_ID"])
-#                 for i in dbdiststreams.keys():
-#                     if len(dboriginstreams[i])==len(diststreams[i]):
-#                         print "All streams are working......... for "+ str(i)
-#                     else:
-#                         print "Stream is down............to dist"
-#                         dboriginstreams={}
-#                         for jj in col.find():
-#                             if jj["Origin_IP"] not in dboriginstreams.keys():
-#                              dboriginstreams[jj["Origin_IP"]]=[jj["Stream_ID"]]
-#                             else:
-#                              dboriginstreams[jj["Origin_IP"]].append(jj["Stream_ID"])
-#                         for ii in dboriginstreams.keys():
-#                             if len(dboriginstreams[ii])==len(originstreams[ii]):
-#                                 print "All streams are working...... for "+str(ii)
-#                                 client.publish("origin/ffmpeg/dist/spawn",str(ii)+" "+str(list(set(diststreams[i]).symmetric_difference(set(dbdiststreams[i]))))+" "+"1")
-#                             else:
-#                                 print "Stream is down..... to origin..."
-#                                 client.publish("origin/ffmpeg/stream/spawn",str(ii)+" "+str(list(set(originstreams[ii]).symmetric_difference(set(dboriginstreams[ii]))))+" "+"1")
-#                                 client.publish("origin/ffmpeg/dist/spawn",str(ii)+" "+str(list(set(diststreams[i]).symmetric_difference(set(dbdiststreams[i]))))+" "+"1")
-
-#             else:
-#                 dboriginstreams={}
-#                 for j in col.find():
-#                     if j["Origin_IP"] not in dboriginstreams.keys():
-#                         dboriginstreams[j["Origin_IP"]]=[j["Stream_ID"]]
-#                     else:
-#                         dboriginstreams[j["Origin_IP"]].append(j["Stream_ID"])
-#                 for i in dboriginstreams.keys():
-#                     if len(dboriginstreams[i])==len(originstreams[i]):
-#                         print "All streams are working...... for or "+str(i)
-#                     else:
-#                         print "Stream is down.....to origin"
-#                         client.publish("origin/ffmpeg/stream/spawn",str(i)+" "+str(list(set(originstreams[i]).symmetric_difference(set(dboriginstreams[i]))))+" "+"1")
 
 
 
@@ -195,12 +161,25 @@ if __name__=="__main__":
         for i in col2.find():
             ndist[i["Dist_IP"]]=0
     while(True):
+        msg={}
         #Always setting Load Balancer Params
-        if len(ndist)!=0:
-            sdist=str(min(ndist.items(), key=lambda x: x[1])[0])
-        if len(norigin)!=0:
-            sorigin=str(min(norigin.items(), key=lambda x: x[1])[0])
-        if insert_origin[0]:
+        if req_all_streams[0]:
+            ip=req_all_streams[1]
+            if ip in norigin.keys():
+                msg={"Origin_IP":ip,"Stream_List":[]}
+                for i in col3.find():
+                    if i["Origin_IP"]==ip:
+                        msg["Stream_List"].append({"Stream_ID":i["Stream_ID"],"Stream_IP":i["Stream_IP"]})
+                print msg
+            elif ip in ndist.keys():
+                msg={"Dist_IP":ip,"Stream_List":[]}
+                for i in col3.find():
+                    if i["Dist_IP"]==ip:
+                        msg["Stream_List"].append({"Stream_ID":i["Stream_ID"],"Stream_IP":i["Stream_IP"]})
+                print msg
+            client.publish("lb/request/allstreams",json.dumps(msg))
+            req_all_streams[0]=0
+        elif insert_origin[0]:
             origin_ips,origin_ids=search_origin()
             msg=json.loads(insert_origin[1])
             client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
@@ -266,17 +245,18 @@ if __name__=="__main__":
                 print "No Origin Server Present"
                 insert_stream=[0,""]
             else:
+                sorigin=str(min(norigin.items(), key=lambda x: x[1])[0])
                 stream_ips,stream_ids=search_stream()
                 msg=json.loads(insert_stream[1])
                 client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
-                if msg["Stream_ID"] not in stream_ids and msg["Stream_IP"] not in stream_ips:
+                if msg["Stream_ID"] not in stream_ids:
                     print str(sorigin)+" "+str(msg["Stream_ID"])+" "+str(msg["Stream_IP"])
                     ddict={"Origin_IP":sorigin,"Stream_ID":msg["Stream_ID"],"Stream_IP":msg["Stream_IP"]}
                     print "Sending Dict"
                     client.publish("origin/ffmpeg/stream/spawn",json.dumps(ddict)) # Insert dict here
                     time.sleep(30)
                     client.publish("origin/ffmpeg/stream/stat/spawn",json.dumps(ddict)) # Insert dict here
-                    col3.insert_one({"Stream_IP":msg["Stream_IP"],"Stream_ID":msg["Stream_ID"],"Origin_IP":""})
+                    col3.insert_one({"Stream_IP":msg["Stream_IP"],"Stream_ID":msg["Stream_ID"],"Origin_IP":"","Dist_IP":""})
                     print "Stream Added----> ID:"+str(msg["Stream_ID"])+" IP:"+str(msg["Stream_IP"])
                 else:
                     print "Stream already present----> ID:"+str(msg["Stream_ID"])+" IP:"+str(msg["Stream_IP"])
@@ -311,19 +291,23 @@ if __name__=="__main__":
                 for i in col4.find():
                     if (str(i["Stream_ID"])==stream_id) and (str(i["TO_IP"]) in ndist.keys()):
                         print "Should come here if already pushed to a dist"
-                        client.publish("lbsresponse/rtmp",str(i["CMD"].split()[-1]))
+                        client.publish("lbsresponse/rtmp",str(i["CMD"].split()[-2]))
                         alreadypushedflag=0
                         break
                     else:
                         alreadypushedflag=1
-                if alreadypushedflag==1:   
+                if alreadypushedflag==1:
+                    sdist=str(min(ndist.items(), key=lambda x: x[1])[0])
                     print str(sorigin)+" "+str(sdist)+" "+str(stream_id)
-                    distdict={"Origin_IP":sorigin,"Dist_IP":sdist,"Stream_ID":stream_id}
+                    stream_ip=col3.find_one({"Stream_ID":stream_id})["Stream_IP"]
+                    distdict={"Origin_IP":sorigin,"Dist_IP":sdist,"Stream_ID":stream_id,"Stream_IP":stream_ip}
                     client.publish("origin/ffmpeg/dist/spawn",json.dumps(distdict))
+                    time.sleep(60)
+                    client.publish("dist/ffmpeg/stream/stat/spawn",json.dumps(distdict))
             else:
                 for i in col4.find():
                     if i["Stream_ID"]==stream_id:
-                        client.publish("lbsresponse/rtmp",str(i["CMD"].split()[-1]))
+                        client.publish("lbsresponse/rtmp",str(i["CMD"].split()[-2]))
 	    reqstream=[0,""]
         elif origin_ffmpeg_dist[0]:
             msg=json.loads(origin_ffmpeg_dist[1])
@@ -336,20 +320,47 @@ if __name__=="__main__":
             # Stream_ID=msg["Stream_ID"]
             print msg["Stream_ID"]+" stream push has been started from origin "+ msg["FROM_IP"]+" to distribution "+msg["TO_IP"]
             col4.insert_one({"CMD":msg["CMD"],"TO_IP":msg["TO_IP"],"FROM_IP":msg["FROM_IP"],"Stream_ID":msg["Stream_ID"]})
+            col3.update_one({"Stream_ID":msg["Stream_ID"],"Origin_IP":msg["FROM_IP"]},{"$set":{"Dist_IP":msg["TO_IP"]}},upsert=True)
             client.publish("lbsresponse/rtmp",str(msg["CMD"].split()[-2]))
             origin_ffmpeg_dist=[0,""]
         elif origin_ffmpeg_respawn[0]:
             msg=json.loads(origin_ffmpeg_respawn[1])
             print str(msg)+" should come here only when missing becomes active"
-            streams = msg["Stream_list"]
-            origin_IP = msg["Origin_IP"]
-            i = 0
-            for stream in streams:
-                stream_ip = col3.find_one({"Stream_ID":stream["Stream_ID"]})["Stream_IP"]
-                streams[i] = {"Origin_IP":origin_IP,"Stream_ID":stream["Stream_ID"],"Stream_IP":stream_ip}
-                i += 1
-            client.publish("origin/ffmpeg/respawn",json.dumps({"Origin_IP":origin_IP,"Stream_list":streams}))
+            # streams = msg["Stream_list"]
+            # origin_IP = msg["Origin_IP"]
+            # i = 0
+            # for stream in streams:
+            #     stream_ip = col3.find_one({"Stream_ID":stream["Stream_ID"]})["Stream_IP"]
+            #     streams[i] = {"Origin_IP":origin_IP,"Stream_ID":stream["Stream_ID"],"Stream_IP":stream_ip}
+            #     i += 1
+            client.publish("origin/ffmpeg/respawn",json.dumps(msg))
             origin_ffmpeg_respawn=[0,""]
+        elif archive_stream_add[0]:
+            msg=json.loads(archive_stream_add[1])
+            print msg
+            msg["Stream_IP"] = col3.find_one({"Stream_ID":msg["Stream_ID"]})["Stream_IP"]
+            msg["Origin_IP"]= col3.find_one({"Stream_ID":msg["Stream_ID"]})["Origin_IP"]
+            print str(msg)+" archiving this......"
+            client.publish("origin/ffmpeg/archive/add",json.dumps(msg))
+            archive_stream_add=[0,""]
+        elif archive_stream_del[0]:
+            msg=json.loads(archive_stream_del[1])
+            print msg
+            msg["Stream_IP"] = col3.find_one({"Stream_ID":msg["Stream_ID"]})["Stream_IP"]
+            msg["Origin_IP"]= col3.find_one({"Stream_ID":msg["Stream_ID"]})["Origin_IP"]
+            print str(msg)+" archiving deleting this......"
+            client.publish("origin/ffmpeg/archive/delete",json.dumps(msg))
+            archive_stream_del=[0,""]
+        elif origin_ffmpeg_dist_respawn[0]:
+            msg=json.loads(origin_ffmpeg_dist_respawn[1])
+            print str(msg)+" should come here only when missing becomes active"
+            msg["Origin_IP"]=col3.find_one({"Stream_IP": msg["Stream_IP"],"Stream_ID": msg["Stream_ID"], "Dist_IP": msg["Dist_IP"]})["Origin_IP"]
+            client.publish("origin/ffmpeg/dist/respawn",json.dumps(msg))
+            origin_ffmpeg_dist_respawn=[0,""]
+        else:
+            continue
+        
+
        
 
 

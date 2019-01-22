@@ -38,6 +38,29 @@ def reqstream():
 		return rtmp_link
 
 
+@app.route('/archivestream')
+def archivestream():
+	global client
+	stream_id  = request.args.get('id', None)
+	start_date= request.args.get('start', None)
+	end_date= request.args.get('end', None)
+	start_time= request.args.get('sTime', None)
+	end_time= request.args.get('eTime', None)
+	opr=request.args.get('opr', None)
+	job_id=request.args.get('job', None)
+	user_ip=request.remote_addr
+	print "Archive Stream.....User: "+ str(user_ip)+" Stream: "+ str(stream_id)
+	if opr=="add":
+		archivedict={"User_IP":user_ip,"Stream_ID":stream_id,"start_date":start_date,"start_time":start_time,"end_date":end_date,"end_time":end_time,"job_id":job_id}
+		client.publish("archive/add", json.dumps(archivedict))
+		return "Archived at location"
+	elif opr=="delete":
+		archivedict={"User_IP":user_ip,"Stream_ID":stream_id,"start_date":start_date,"start_time":start_time,"end_date":end_date,"end_time":end_time,"job_id":job_id}
+		client.publish("archive/delete", json.dumps(archivedict))
+		return "Archive Deleted"
+
+
+
 @app.route('/streams')
 def stream():
 	global client
