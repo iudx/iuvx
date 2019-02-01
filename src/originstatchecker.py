@@ -24,6 +24,7 @@ class Statter():
         self.missingsQ = Queue.Queue()
         self.startFlag = False
         self.waitPeriod = 30
+        self.dictLock = threading.Lock()
         """ Origin Server IP Address, currently LAN IP """
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -48,11 +49,13 @@ class Statter():
             tsDBUrl, tsDBPort, tsDBUname, tsDBPwd, appName)
 
     def addNewStream(self, stream_id, stream_ip):
+	print("Adding Stream \t" + str(stream_id))
         self.registeredStreams[stream_id] = {"Stream_IP": stream_ip,
                 "Status": 1,"Revived":0, "Timer":None, "InBW":0}
 
     def deleteStream(self, streamId):
-        self.registeredStreams.pop(streamId)
+        pass
+        #self.registeredStreams.pop(streamId)
 
     def on_message(self, client, userdata, message):
         msg = str(message.payload.decode("utf-8"))
@@ -69,11 +72,12 @@ class Statter():
                     self.registeredStreams = []
                 if topic == "lb/request/allstreams":
                     print("Initialized Streams")
-                    streamList = msgDict["Stream_List"]
-                    for stream in streamList:
-                        self.addNewStream(
-                            stream["Stream_ID"], stream["Stream_IP"])
-                        self.startFlag = True
+                    if (msgDict["Stream_List"]):
+                        streamList = msgDict["Stream_List"]
+                        for stream in streamList:
+                            self.addNewStream(
+                                stream["Stream_ID"], stream["Stream_IP"])
+                    self.startFlag = True
         except Exception as e:
             print(e)
 
@@ -94,17 +98,17 @@ class Statter():
                 statList = stats
 
             try:
-                ''' Clear status '''
-                for stream in self.registeredStreams:
-                    self.registeredStreams[stream]["Status"] = 0
-                ''' Update status '''
-                for stat in statList:
-                    if stat["name"] in self.registeredStreams:
-                        self.registeredStreams[stat["name"]]["InBW"] = int(stat["bw_in"])
-                        self.registeredStreams[stat["name"]]["Status"] = 1
+                with self.dictLock:
+                    ''' Clear status '''
+                    for stream in self.registeredStreams:
+                        self.registeredStreams[stream]["Status"] = 0
+                    ''' Update status '''
+                    for stat in statList:
+                        if stat["name"] in self.registeredStreams:
+                            self.registeredStreams[stat["name"]]["InBW"] = int(stat["bw_in"])
+                            self.registeredStreams[stat["name"]]["Status"] = 1
             except Exception as e:
                 print(e)
-
             time.sleep(0.5)
 
     def resetRevived(self, streamId):
@@ -112,13 +116,14 @@ class Statter():
 
     def checkStat(self):
         while(True):
-            for stream in self.registeredStreams:
-                if (self.registeredStreams[stream]["Status"] == 0) and (self.registeredStreams[stream]["Revived"] == 0):
-                    self.registeredStreams[stream]["Revived"] = 1
-                    self.missingsQ.put(stream)
-                    self.registeredStreams[stream]["Timer"] = threading.Timer(self.waitPeriod,
-                                                                      self.resetRevived, args=[stream])
-                    self.registeredStreams[stream]["Timer"].start()
+            with self.dictLock:
+                for stream in self.registeredStreams:
+                    if (self.registeredStreams[stream]["Status"] == 0) and (self.registeredStreams[stream]["Revived"] == 0):
+                        self.registeredStreams[stream]["Revived"] = 1
+                        self.missingsQ.put(stream)
+                        self.registeredStreams[stream]["Timer"] = threading.Timer(self.waitPeriod,
+                                                                          self.resetRevived, args=[stream])
+                        self.registeredStreams[stream]["Timer"].start()
             time.sleep(1)
 
     def pub(self):
@@ -140,38 +145,38 @@ class Statter():
     def logger(self):
         ''' Replace with publisher here '''
         while(True):
-            print("Logging \n")
             self.mqttc.publish("origin/stat",self.origin_IP+" "+str(self.numClients))
             epochTime = int(time.time()) * 1000000000
             self.logDataFlag = False
-            for stream in self.registeredStreams:
-                series = []
-                ''' Status '''
-                pointValues = {
-                    "time": epochTime,
-                    "measurement": "Status",
-                    'fields': {
-                        'value': self.registeredStreams[stream]["Status"],
-                    },
-                    'tags': {
-                        "streamId": stream
-                    },
-                }
-                series.append(pointValues)
-                ''' BW '''
-                pointValues = {
-                    "time": epochTime,
-                    "measurement": "Bandwidth",
-                    'fields': {
-                        'value': self.registeredStreams[stream]["InBW"],
-                    },
-                    'tags': {
-                        "streamId": stream
-                    },
-                }
-                series.append(pointValues)
-                ''' Append BitRate here '''
-                self.influxClient.write_points(series, time_precision='n')
+            with self.dictLock:
+                for stream in self.registeredStreams:
+                    series = []
+                    ''' Status '''
+                    pointValues = {
+                        "time": epochTime,
+                        "measurement": "Status",
+                        'fields': {
+                            'value': self.registeredStreams[stream]["Status"],
+                        },
+                        'tags': {
+                            "streamId": stream
+                        },
+                    }
+                    series.append(pointValues)
+                    ''' BW '''
+                    pointValues = {
+                        "time": epochTime,
+                        "measurement": "Bandwidth",
+                        'fields': {
+                            'value': self.registeredStreams[stream]["InBW"],
+                        },
+                        'tags': {
+                            "streamId": stream
+                        },
+                    }
+                    series.append(pointValues)
+                    ''' Append BitRate here '''
+                    self.influxClient.write_points(series, time_precision='n')
             time.sleep(30)
 
     def start(self):
@@ -199,10 +204,10 @@ class Statter():
 
         while(True):
             try:
-                for stream in self.registeredStreams:
-                    obj = self.registeredStreams[stream]
-                    print("Stream_ID  " + str(stream) +
-                          "\t Stream_Status   " + str(obj["Status"]))
+		with self.dictLock:
+			if (self.registeredStreams):
+			    for stream in self.registeredStreams:
+				obj = self.registeredStreams[stream]
             except Exception as e:
                 print(e)
             time.sleep(2)
