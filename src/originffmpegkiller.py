@@ -48,7 +48,6 @@ if __name__=="__main__":
 	print "Started"
 	while(True):
 		if origin_ffmpeg_kill[0]==1:
-			print 
 			print origin_ffmpeg_kill[1]["CMD"].split()[1:-1]
 			sp.Popen(["pkill","-f"," ".join(origin_ffmpeg_kill[1]["CMD"].split()[1:-1])],stdin=FNULL,stdout=FNULL,stderr=FNULL,shell=False)
 			time.sleep(1)

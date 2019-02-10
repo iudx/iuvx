@@ -19,6 +19,7 @@ def on_message(client, userdata, message):
 	global rtmp_link
 	msg=str(message.payload.decode("utf-8"))
 	topic=str(message.topic.decode("utf-8"))
+	print msg
 	rtmp_link=msg
 
 
@@ -31,8 +32,9 @@ def reqstream():
 	print "Request Stream.....User: "+ str(user_ip)+" Stream: "+ str(stream_id)
 	reqdict={"User_IP":user_ip,"Stream_ID":stream_id}
 	client.publish("stream/request", json.dumps(reqdict))
-	time.sleep(10)
-	if rtmp_link=="":
+	print rtmp_link
+	time.sleep(120)
+	if not (rtmp_link):
 		return "No Stream Available"
 	else:
 		return rtmp_link

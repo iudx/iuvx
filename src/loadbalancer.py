@@ -210,7 +210,7 @@ if __name__=="__main__":
             client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
             print str(msg["Stream_ID"])+" stream has been started to origin "+ str(msg["TO_IP"])
             col4.insert_one(msg)
-            col3.update_one({"Stream_IP":msg["FROM_IP"]},{"$set":{"Origin_IP":msg["TO_IP"]}},upsert=True)
+            col3.update_one({"Stream_ID":msg["Stream_ID"]},{"$set":{"Origin_IP":msg["TO_IP"]}},upsert=True)
             # col1.update_one({"Origin_IP":msg["TO_IP"]},{"$set":{"Stream_ID":msg["Stream_ID"]}},upsert=True)
             origin_ffmpeg_stream=[0,""]
         elif insert_dist[0]:
@@ -235,8 +235,10 @@ if __name__=="__main__":
                     if i["TO_IP"]==msg["Dist_IP"]:
                         killdict={"Origin_IP":i["FROM_IP"],"CMD":i["CMD"]}
                         client.publish("origin/ffmpeg/kill",json.dumps(killdict))
+			time.sleep(5)
                 col4.delete_many({"TO_IP":msg["Dist_IP"]})
                 col2.delete_one({"Dist_IP":msg["Dist_IP"],"Dist_ID":msg["Dist_ID"]})
+		col3.update_many({"Dist_IP":msg["Dist_IP"]},{"$set":{"Dist_IP":""}},upsert=True)
                 print "Distribution Deleted----> ID:"+str(msg["Dist_ID"])+" IP:"+str(msg["Dist_IP"])
             del ndist[msg["Dist_IP"]]
             delete_dist=[0,""]
@@ -298,6 +300,7 @@ if __name__=="__main__":
                         alreadypushedflag=1
                 if alreadypushedflag==1:
                     sdist=str(min(ndist.items(), key=lambda x: x[1])[0])
+                    sorigin=str(min(norigin.items(), key=lambda x: x[1])[0])
                     print str(sorigin)+" "+str(sdist)+" "+str(stream_id)
                     stream_ip=col3.find_one({"Stream_ID":stream_id})["Stream_IP"]
                     distdict={"Origin_IP":sorigin,"Dist_IP":sdist,"Stream_ID":stream_id,"Stream_IP":stream_ip}
@@ -321,6 +324,7 @@ if __name__=="__main__":
             print msg["Stream_ID"]+" stream push has been started from origin "+ msg["FROM_IP"]+" to distribution "+msg["TO_IP"]
             col4.insert_one({"CMD":msg["CMD"],"TO_IP":msg["TO_IP"],"FROM_IP":msg["FROM_IP"],"Stream_ID":msg["Stream_ID"]})
             col3.update_one({"Stream_ID":msg["Stream_ID"],"Origin_IP":msg["FROM_IP"]},{"$set":{"Dist_IP":msg["TO_IP"]}},upsert=True)
+            print str(msg["CMD"].split()[-2])
             client.publish("lbsresponse/rtmp",str(msg["CMD"].split()[-2]))
             origin_ffmpeg_dist=[0,""]
         elif origin_ffmpeg_respawn[0]:
