@@ -54,29 +54,34 @@ class Statter():
                 "Status": 1,"Revived":0, "Timer":None, "InBW":0}
 
     def deleteStream(self, streamId):
-        self.registeredStreams.pop(streamId)
+        print ("Removing Stream \t"+str(streamId))
+        del self.registeredStreams[streamId]
 
     def on_message(self, client, userdata, message):
         msg = str(message.payload.decode("utf-8"))
         topic = str(message.topic.decode("utf-8"))
         msgDict = json.loads(msg)
         try:
-            if msgDict["Dist_IP"] == self.dist_IP:
-                if topic == "dist/ffmpeg/stream/stat/spawn":
-                    self.addNewStream(
-                        msgDict["Stream_ID"], msgDict["Stream_IP"])
-                if topic == "origin/ffmpeg/kill":
-                    self.deleteStream(msgDict["Stream_ID"])
-                if topic == "origin/ffmpeg/killall":
-                    self.registeredStreams = []
-                if topic == "lb/request/allstreams":
-                    print("Initialized Streams")
-                    if (msgDict["Stream_List"]):
-                        streamList = msgDict["Stream_List"]
-                        for stream in streamList:
-                            self.addNewStream(
-                                stream["Stream_ID"], stream["Stream_IP"])
-                    self.startFlag = True
+            if isinstance(msgDict,list):
+                for i in msgDict:
+                    if i["Dist_IP"] == self.dist_IP:
+                        if topic == "origin/ffmpeg/kill":
+                            self.deleteStream(i["Stream_ID"])
+            else:
+                if msgDict["Dist_IP"] == self.dist_IP:
+                    if topic == "dist/ffmpeg/stream/stat/spawn":
+                        self.addNewStream(
+                            msgDict["Stream_ID"], msgDict["Stream_IP"])
+                    if topic == "origin/ffmpeg/killall":
+                        self.registeredStreams = []
+                    if topic == "lb/request/allstreams":
+                        print("Initialized Streams")
+                        if (msgDict["Stream_List"]):
+                            streamList = msgDict["Stream_List"]
+                            for stream in streamList:
+                                self.addNewStream(
+                                    stream["Stream_ID"], stream["Stream_IP"])
+                        self.startFlag = True
         except Exception as e:
             print(e)
 

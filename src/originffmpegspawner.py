@@ -1,4 +1,3 @@
-import paho.mqtt.client as mqtt
 import os
 import sys
 import signal
@@ -8,23 +7,41 @@ import socket
 import subprocess as sp
 import threading
 from MQTTPubSub import MQTTPubSub
-
+import OriginCelery as oc
 import json
+import threading
 #Flags
 origin_ffmpeg_spawn=[0,""]
 origin_ffmpeg_dist=[0,""]
 origin_ffmpeg_respawn=[0,""]
 origin_ffmpeg_dist_respawn=[0,""]
 
+def monitorTaskResult(res):
+	global client
+	while(True):
+		if res.ready():
+			retval=res.get()
+			if retval:
+				if isinstance(retval,dict):
+					client.publish(retval["topic"],json.dumps(retval["ddict"]))
+					time.sleep(0.1)
+				elif isinstance(retval,list):
+					for i in retval:
+						client.publish(u["topic"],json.dumps(i["ddict"]))
+						time.sleep(30)
+			break
+
+
 class DefunctCleaner(threading.Thread):
   def __init__(self):
-    threading.Thread.__init__(self,target=sys.exit)
+	threading.Thread.__init__(self,target=sys.exit)
   def run(self):
 	while(True):
 		try:
 			os.waitpid(-1, os.WNOHANG)
 		except Exception as exc:
 			continue
+
 
 
 
@@ -38,15 +55,19 @@ def on_message(client, userdata, message):
 		ddict=json.loads(msg)
 		if ddict["Origin_IP"]==str(s.getsockname()[0]):
 			if topic=="origin/ffmpeg/stream/spawn":
+				print topic,msg
 				origin_ffmpeg_spawn[0]=1
 				origin_ffmpeg_spawn[1]=ddict
 			if topic=="origin/ffmpeg/dist/spawn":
+				print topic,msg
 				origin_ffmpeg_dist[0]=1
 				origin_ffmpeg_dist[1]=ddict
 			if topic=="origin/ffmpeg/respawn":
+				print topic,msg
 				origin_ffmpeg_respawn[0]=1
 				origin_ffmpeg_respawn[1]=ddict
 			if topic=="origin/ffmpeg/dist/respawn":
+				print topic,msg
 				origin_ffmpeg_dist_respawn[0]=1
 				origin_ffmpeg_dist_respawn[1]=ddict
 
@@ -68,55 +89,23 @@ if __name__=="__main__":
 	t1.setDaemon(True)
 	t1.start()
 	client.run()
-	FNULL = open(os.devnull, 'w')
+	
 	while(True):
 		if origin_ffmpeg_spawn[0]==1:
-			msg=origin_ffmpeg_spawn[1]
-			cmd=["nohup","/usr/bin/ffmpeg", "-i", "rtsp://"+str(msg["Stream_IP"])+"/h264", "-an", "-vcodec", "copy", "-f","flv", "rtmp://"+str(msg["Origin_IP"]).strip()+":1935/dynamic/"+str(msg["Stream_ID"]).strip(),"&"]
-			print " ".join(cmd)
-			proc=sp.Popen(" ".join(cmd),stdout=FNULL, stderr=FNULL,stdin=FNULL,shell=True,preexec_fn=os.setpgrp)
-			print "FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2])
-			senddict={"CMD":" ".join(cmd),"FROM_IP":msg["Stream_IP"],"Stream_ID":msg["Stream_ID"],"TO_IP":msg["Origin_IP"]}
-			client.publish("db/origin/ffmpeg/stream/spawn",json.dumps(senddict))
-			# col.insert_one(msg)
+			res=oc.OriginFfmpegSpawn.delay(origin_ffmpeg_spawn)
+			threading.Thread(target=monitorTaskResult,args=(res,)).start()
 			origin_ffmpeg_spawn=[0,""]
 		elif origin_ffmpeg_dist[0]==1:
-			msg=origin_ffmpeg_dist[1]
-			cmd=["nohup","/usr/bin/ffmpeg", "-i", "rtmp://"+str(msg["Origin_IP"]).strip()+":1935/dynamic/"+str(msg["Stream_ID"]).strip(), "-an", "-vcodec", "copy", "-f","flv", "rtmp://"+str(msg["Dist_IP"]).strip()+":1935/dynamic/"+str(msg["Stream_ID"]).strip(),"&"]
-			proc=sp.Popen(" ".join(cmd),stdin=FNULL,stdout=FNULL, stderr=FNULL,shell=True,preexec_fn=os.setpgrp)
-			print "FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2])
-			print " ".join(cmd)
-			senddict={"CMD":" ".join(cmd),"FROM_IP":msg["Origin_IP"],"Stream_ID":msg["Stream_ID"],"TO_IP":msg["Dist_IP"]}
-			client.publish("db/origin/ffmpeg/dist/spawn",json.dumps(senddict))
-			# col.insert_one(msg)
+			res=oc.OriginFfmpegDist.delay(origin_ffmpeg_dist)
+			threading.Thread(target=monitorTaskResult,args=(res,)).start()
 			origin_ffmpeg_dist=[0,""]
 		elif origin_ffmpeg_respawn[0]:
-			print "Entered respawner"
-			print origin_ffmpeg_respawn[1]
-			# # for msg in origin_ffmpeg_respawn[1]["Stream_list"]:
-			# 	cmd=["nohup","/usr/bin/ffmpeg", "-i", "rtsp://"+str(msg["Stream_IP"])+"/h264", "-an", "-vcodec", "copy", "-f","flv", "rtmp://"+str(msg["Origin_IP"]).strip()+":1935/dynamic/"+str(msg["Stream_ID"]).strip(),"&"]
-			# 	print " ".join(cmd)
-			# 	proc=sp.Popen(" ".join(cmd),stdout=FNULL, stderr=FNULL,stdin=FNULL,shell=True,preexec_fn=os.setpgrp)
-			# 	print "FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2])
-			# 	senddict={"CMD":" ".join(cmd),"FROM_IP":msg["Stream_IP"],"Stream_ID":msg["Stream_ID"],"TO_IP":msg["Origin_IP"]}
-			# 	client.publish("db/origin/ffmpeg/stream/spawn",json.dumps(senddict))
-			msg=origin_ffmpeg_respawn[1]
-			cmd=["nohup","/usr/bin/ffmpeg", "-i", "rtsp://"+str(msg["Stream_IP"])+"/h264", "-an", "-vcodec", "copy", "-f","flv", "rtmp://"+str(msg["Origin_IP"]).strip()+":1935/dynamic/"+str(msg["Stream_ID"]).strip(),"&"]
-			print " ".join(cmd)
-			proc=sp.Popen(" ".join(cmd),stdout=FNULL, stderr=FNULL,stdin=FNULL,shell=True,preexec_fn=os.setpgrp)
-			print "FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2])
-			senddict={"CMD":" ".join(cmd),"FROM_IP":msg["Stream_IP"],"Stream_ID":msg["Stream_ID"],"TO_IP":msg["Origin_IP"]}
-			client.publish("db/origin/ffmpeg/stream/sspawn",json.dumps(senddict))
+			res=oc.OriginFfmpegRespawn.delay(origin_ffmpeg_respawn)
+			threading.Thread(target=monitorTaskResult,args=(res,)).start()
 			origin_ffmpeg_respawn=[0,""]
 		elif origin_ffmpeg_dist_respawn[0]==1:
-			msg=origin_ffmpeg_dist_respawn[1]
-			cmd=["nohup","/usr/bin/ffmpeg", "-i", "rtmp://"+str(msg["Origin_IP"]).strip()+":1935/dynamic/"+str(msg["Stream_ID"]).strip(), "-an", "-vcodec", "copy", "-f","flv", "rtmp://"+str(msg["Dist_IP"]).strip()+":1935/dynamic/"+str(msg["Stream_ID"]).strip(),"&"]
-			proc=sp.Popen(" ".join(cmd),stdin=FNULL,stdout=FNULL, stderr=FNULL,shell=True,preexec_fn=os.setpgrp)
-			print "FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2])
-			print " ".join(cmd)
-			senddict={"CMD":" ".join(cmd),"FROM_IP":msg["Origin_IP"],"Stream_ID":msg["Stream_ID"],"TO_IP":msg["Dist_IP"]}
-			client.publish("db/origin/ffmpeg/dist/spawn",json.dumps(senddict))
-			# col.insert_one(msg)
+			res=oc.OriginFfmpegDistRespawn.delay(origin_ffmpeg_dist_respawn)
+			threading.Thread(target=monitorTaskResult,args=(res,)).start()
 			origin_ffmpeg_dist_respawn=[0,""]
 		
 

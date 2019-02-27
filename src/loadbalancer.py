@@ -304,6 +304,7 @@ if __name__=="__main__":
                     print str(sorigin)+" "+str(sdist)+" "+str(stream_id)
                     stream_ip=col3.find_one({"Stream_ID":stream_id})["Stream_IP"]
                     distdict={"Origin_IP":sorigin,"Dist_IP":sdist,"Stream_ID":stream_id,"Stream_IP":stream_ip}
+                    client.publish("lbsresponse/rtmp","rtmp://"+str(sdist)+":1935/dynamic/"+str(stream_id))
                     client.publish("origin/ffmpeg/dist/spawn",json.dumps(distdict))
                     time.sleep(60)
                     client.publish("dist/ffmpeg/stream/stat/spawn",json.dumps(distdict))

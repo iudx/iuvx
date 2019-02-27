@@ -32,12 +32,9 @@ def reqstream():
 	print "Request Stream.....User: "+ str(user_ip)+" Stream: "+ str(stream_id)
 	reqdict={"User_IP":user_ip,"Stream_ID":stream_id}
 	client.publish("stream/request", json.dumps(reqdict))
-	print rtmp_link
-	time.sleep(120)
-	if not (rtmp_link):
-		return "No Stream Available"
-	else:
-		return rtmp_link
+	while(rtmp_link==""):
+		continue
+	return rtmp_link+" .... Stream will be available in a while....."
 
 
 @app.route('/archivestream')

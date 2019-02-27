@@ -32,18 +32,19 @@ class MQTTPubSub:
             self._mqttc.on_disconnect = params["onDisconnect"]
 
 
-    def publish(self, topic, payload):
-        self._mqttc.publish(topic, payload)
-
-
-    def run(self):
         self._mqttc.connect(self.url, self.port, self.timeout)
         a=[]
         if type(self.topic)==type(a):
             self._mqttc.subscribe(self.topic)
         else:
             self._mqttc.subscribe(self.topic, 0)
-        threading.Thread(target=self._mqttc.loop_start()).start()
+
+
+    def publish(self, topic, payload):
+        self._mqttc.publish(topic, payload)
+
+    def run(self):
+         threading.Thread(target=self._mqttc.loop_start()).start()
         
 
 
