@@ -94,18 +94,10 @@ def on_message(client, userdata, message):
         req_all_streams[0]=1
         req_all_streams[1]=msg
     elif topic=="origin/stat":
-        ip=msg.split()[0]
-        clients=msg.split()[1]
-        for i in col1.find():
-            if ip==i["Origin_IP"]:
-                logger.info( "Updating")
-                col1.update({"Origin_IP":ip},{"$set",{"NClients":int(clients)}},upsert=True)
+        lbc.OriginStat.delay(msg) 
     elif topic=="dist/stat":
-        ip=msg.split()[0]
-        clients=msg.split()[1]
-        for i in col2.find():
-            if ip==i["Dist_IP"]:
-                col2.update({"Dist_IP":ip},{"$set",{"NClients":int(clients)}},upsert=True)
+        lbc.DistStat.delay(msg)
+
         # print topic+" "+msg
             # diststreams[ip]=streams
      

@@ -140,6 +140,7 @@ def OriginFfmpegStream( origin_ffmpeg_stream):
     logger.info( str(msg["Stream_ID"])+" stream has been started to origin "+ str(msg["TO_IP"]))
     col4.insert_one(msg)
     col3.update_one({"Stream_ID":msg["Stream_ID"]},{"$set":{"Origin_IP":msg["TO_IP"]}},upsert=True)
+    time.sleep(0.1)
     return 0
     # col1.update_one({"Origin_IP":msg["TO_IP"]},{"$set":{"Stream_ID":msg["Stream_ID"]}},upsert=True)
     
@@ -196,10 +197,6 @@ def InsertStream(insert_stream):
             logger.info( str(sorigin)+" "+str(msg["Stream_ID"])+" "+str(msg["Stream_IP"]))
             ddict={"Origin_IP":sorigin,"Stream_ID":msg["Stream_ID"],"Stream_IP":msg["Stream_IP"]}
             logger.info( "Sending Dict")
-            # client.publish("origin/ffmpeg/stream/spawn",json.dumps(ddict)) # Insert dict here
-            # logger.info(ddict)
-            # time.sleep(30) 
-            # client.publish("origin/ffmpeg/stream/stat/spawn",json.dumps(ddict)) # Insert dict here
             logger.info( "Stream Added----> ID:"+str(msg["Stream_ID"])+" IP:"+str(msg["Stream_IP"]))
             return [{"topic":"origin/ffmpeg/stream/spawn","ddict":ddict},{"topic":"origin/ffmpeg/stream/stat/spawn","ddict":ddict}]
         else:
@@ -274,6 +271,7 @@ def OriginFfmpegDist( origin_ffmpeg_dist):
     col4.insert_one({"CMD":msg["CMD"],"TO_IP":msg["TO_IP"],"FROM_IP":msg["FROM_IP"],"Stream_ID":msg["Stream_ID"]})
     col3.update_one({"Stream_ID":msg["Stream_ID"],"Origin_IP":msg["FROM_IP"]},{"$set":{"Dist_IP":msg["TO_IP"]}},upsert=True)
     logger.info( str(msg["CMD"].split()[-2]))
+    time.sleep(0.1)
     return {"topic":"lbsresponse/rtmp","ddict":str(msg["CMD"].split()[-2])}
 
 
@@ -308,6 +306,21 @@ def OriginFFmpegDistRespawn( origin_ffmpeg_dist_respawn):
     logger.info( str(msg)+" should come here only when missing becomes active")
     msg["Origin_IP"]=col3.find_one({"Stream_IP": msg["Stream_IP"],"Stream_ID": msg["Stream_ID"], "Dist_IP": msg["Dist_IP"]})["Origin_IP"]
     return {"topic":"origin/ffmpeg/dist/respawn","ddict":msg}
+
+@app.task
+def OriginStat(msg):
+    msg=json.loads(msg)
+    for i in col1.find():
+            if msg["Origin_IP"]==i["Origin_IP"]:
+                col1.update({"Origin_IP":msg["Origin_IP"]},{"$set":{"NClients":int(msg["NClients"])}},upsert=True)
+
+
+@app.task
+def DistStat(msg):
+    msg=json.loads(msg)
+    for i in col2.find():
+            if msg["Dist_IP"]==i["Dist_IP"]:
+                col2.update({"Dist_IP":msg["Dist_IP"]},{"$set":{"NClients":int(msg["NClients"])}},upsert=True)
 
 
 

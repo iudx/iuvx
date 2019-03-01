@@ -49,13 +49,15 @@ class Statter():
             tsDBUrl, tsDBPort, tsDBUname, tsDBPwd, appName)
 
     def addNewStream(self, stream_id, stream_ip):
-	print("Adding Stream \t" + str(stream_id))
-        self.registeredStreams[stream_id] = {"Stream_IP": stream_ip,
+        with self.dictLock:
+            print("Adding Stream \t" + str(stream_id))
+            self.registeredStreams[stream_id] = {"Stream_IP": stream_ip,
                 "Status": 1,"Revived":0, "Timer":None, "InBW":0}
 
     def deleteStream(self, streamId):
-        print ("Removing Stream \t"+str(streamId))
-        del self.registeredStreams[streamId]
+        with self.dictLock:
+            print ("Removing Stream \t"+str(streamId))
+            del self.registeredStreams[streamId]
 
     def on_message(self, client, userdata, message):
         msg = str(message.payload.decode("utf-8"))
@@ -74,7 +76,8 @@ class Statter():
                         self.addNewStream(
                         msgDict["Stream_ID"], msgDict["Stream_IP"])
                     if topic == "origin/ffmpeg/killall":
-                        self.registeredStreams = {}
+                        with self.dictLock:
+                            self.registeredStreams = {}
                     if topic == "lb/request/allstreams":
                         print("Initialized Streams")
                     if (msgDict["Stream_List"]):
@@ -117,7 +120,12 @@ class Statter():
             time.sleep(0.5)
 
     def resetRevived(self, streamId):
-        self.registeredStreams[streamId]["Revived"] = 0
+        with self.dictLock:
+            try:
+                self.registeredStreams[streamId]["Revived"] = 0
+            except Exception as e:
+                print e
+
 
     def checkStat(self):
         while(True):
@@ -150,7 +158,7 @@ class Statter():
     def logger(self):
         ''' Replace with publisher here '''
         while(True):
-            self.mqttc.publish("origin/stat",self.origin_IP+" "+str(self.numClients))
+            self.mqttc.publish("origin/stat",json.dumps({"Origin_IP":self.origin_IP,"NClients":str(self.numClients)}))
             epochTime = int(time.time()) * 1000000000
             self.logDataFlag = False
             with self.dictLock:

@@ -83,3 +83,13 @@ def OriginFfmpegKillAll(origin_ffmpeg_killall):
 	sp.Popen(["pkill","-f","/usr/bin/ffmpeg"],stdin=FNULL,stdout=FNULL,stderr=FNULL,shell=False)
 	return 0
 
+
+@app.task 
+def OriginFfmpegArchive(msg,length):
+	print "Entered ffmpeg archiver"
+	logger.info(msg)
+	logger.info(length)
+	cmd=["nohup","/usr/bin/ffmpeg", "-i", "rtmp://"+str(msg["Origin_IP"]).strip()+":1935/dynamic/"+str(msg["Stream_ID"]).strip(),"-an","-vcodec","copy", "-t",str(length),"-f","flv",  "JobID_"+str(msg["job_id"])+"_Stream_ID_"+str(msg["Stream_ID"])+"_start_date_"+str(msg["start_date"])+"_start_time_"+str(msg["start_time"])+"_end_date_"+str(msg["end_date"])+"_end_time_"+str(msg["end_time"])+"_length_"+str(length)+".flv","&" ]
+	logger.info(" ".join(cmd))
+	proc=sp.Popen(" ".join(cmd),stdout=FNULL, stderr=FNULL,stdin=FNULL,shell=True,preexec_fn=os.setpgrp)
+	logger.info("FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2]))

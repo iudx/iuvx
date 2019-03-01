@@ -13,6 +13,8 @@ import socket
 import pymongo
 from datetime import datetime
 from datetime import timedelta
+
+import OriginCelery as oc
 origin_ffmpeg_archive=[0,""]
 origin_ffmpeg_archive_del=[0,""]
 
@@ -64,14 +66,7 @@ def on_message(client, userdata, message):
 
 
 def ffmpeg_archiver(msg,length):
-	global FNULL
-	print "Entered ffmpeg archiver"
-	print msg
-	print length
-	cmd=["nohup","/usr/bin/ffmpeg", "-i", "rtmp://"+str(msg["Origin_IP"]).strip()+":1935/dynamic/"+str(msg["Stream_ID"]).strip(),"-an","-vcodec","copy", "-t",str(length),"-f","flv",  "JobID_"+str(msg["job_id"])+"_Stream_ID_"+str(msg["Stream_ID"])+"_start_date_"+str(msg["start_date"])+"_start_time_"+str(msg["start_time"])+"_end_date_"+str(msg["end_date"])+"_end_time_"+str(msg["end_time"])+"_length_"+str(length)+".flv","&" ]
-	print(" ".join(cmd))
-	proc=sp.Popen(" ".join(cmd),stdout=FNULL, stderr=FNULL,stdin=FNULL,shell=True,preexec_fn=os.setpgrp)
-	print("FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2]))
+	oc.OriginFfmpegArchive.delay(msg,length)
 	# client.publish("db/origin/ffmpeg/archiver/spawn","Archiver started")
 
 #MQTT Params
