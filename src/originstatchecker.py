@@ -80,12 +80,11 @@ class Statter():
                             self.registeredStreams = {}
                     if topic == "lb/request/allstreams":
                         print("Initialized Streams")
-                    if (msgDict["Stream_List"]):
-                        streamList = msgDict["Stream_List"]
-                        for stream in streamList:
-                            self.addNewStream(
-                                stream["Stream_ID"], stream["Stream_IP"])
-                    self.startFlag = True
+                        if (msgDict["Stream_List"]):
+                            streamList = msgDict["Stream_List"]
+                            for stream in streamList:
+                                self.addNewStream(stream["Stream_ID"], stream["Stream_IP"])
+                        self.startFlag = True
         except Exception as e:
             print(e)
 
