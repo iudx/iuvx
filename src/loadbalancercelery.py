@@ -220,9 +220,9 @@ def DeleteStream( delete_stream):
         for i in col4.find():
             if str(i["Stream_ID"])==msg["Stream_ID"]:
                 if i["TO_IP"] in norigin:
-                    killist.append({"Origin_IP":i["TO_IP"],"CMD":i["CMD"],"Stream_ID":i["Stream_ID"],"Dist_IP":""})
+                    killist.append({"Origin_IP":i["TO_IP"],"CMD":i["CMD"],"Stream_ID":i["Stream_ID"],"Dist_IP":"","RTSP_CMD":i["RTSP_CMD"]})
                 elif i["FROM_IP"] in norigin:
-                    killist.append({"Origin_IP":i["TO_IP"],"CMD":i["CMD"],"Stream_ID":i["Stream_ID"],"Dist_IP":i["TO_IP"]})
+                    killist.append({"Origin_IP":i["TO_IP"],"CMD":i["CMD"],"Stream_ID":i["Stream_ID"],"Dist_IP":i["TO_IP"],"RTSP_CMD":i["RTSP_CMD"]})
         col3.delete_one({"Stream_IP":msg["Stream_IP"],"Stream_ID":msg["Stream_ID"]})
         col4.delete_many({"Stream_ID":msg["Stream_ID"]})
         # col1.update_one({"Stream_ID":msg["Stream_ID"]},{"$set":{"Stream_ID":""}},upsert=True)
@@ -244,7 +244,7 @@ def RequestStream( reqstream):
         for i in col4.find():
             if (str(i["Stream_ID"])==stream_id) and (str(i["TO_IP"]) in ndist.keys()):
                 logger.info( "Should come here if already pushed to a dist")
-                return {"topic":"lbsresponse/rtmp","ddict":str(i["CMD"].split()[-2])}
+                return {"topic":"lbsresponse/rtmp","ddict":"RTMP: "+str(i["CMD"].split()[-2])+" RTSP: "+str(i["RTSP_CMD"].split()[-2])+" HLS: http://"+str(i["TO_IP"]+":8080/hls/"+str(i["Stream_ID"]+".m3u8"))}
                 alreadypushedflag=0
                 break
             else:
@@ -255,11 +255,11 @@ def RequestStream( reqstream):
             logger.info( str(sorigin)+" "+str(sdist)+" "+str(stream_id))
             stream_ip=col3.find_one({"Stream_ID":stream_id})["Stream_IP"]
             distdict={"Origin_IP":sorigin,"Dist_IP":sdist,"Stream_ID":stream_id,"Stream_IP":stream_ip}
-            return [{"topic":"lbsresponse/rtmp","ddict":"rtmp://"+str(sdist)+":1935/dynamic/"+str(stream_id)},{"topic":"origin/ffmpeg/dist/spawn","ddict":distdict},{"topic":"dist/ffmpeg/stream/stat/spawn","ddict":distdict}]
+            return [{"topic":"lbsresponse/rtmp","ddict":"RTMP: "+"rtmp://"+str(sdist)+":1935/dynamic/"+str(stream_id)+" RTSP: rtsp://"+str(sdist)+":80/dynamic/"+str(stream_id)+" HLS: http://"+str(i["TO_IP"]+":8080/hls/"+str(i["Stream_ID"]+".m3u8"))},{"topic":"origin/ffmpeg/dist/spawn","ddict":distdict},{"topic":"dist/ffmpeg/stream/stat/spawn","ddict":distdict}]
     else:
         for i in col4.find():
             if i["Stream_ID"]==stream_id:
-                return {"topic":"lbsresponse/rtmp","ddict":str(i["CMD"].split()[-2])}
+                return {"topic":"lbsresponse/rtmp","ddict":"RTMP: "+str(i["CMD"].split()[-2])+" RTSP: "+str(i["RTSP_CMD"].split()[-2])+" HLS: http://"+str(i["TO_IP"]+":8080/hls/"+str(i["Stream_ID"]+".m3u8"))}
 
 
 @app.task()

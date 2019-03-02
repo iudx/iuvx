@@ -11,30 +11,30 @@ import json
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 app = Flask(__name__)
-rtmp_link=""
+stream_link=""
 
 
 
 def on_message(client, userdata, message):
-	global rtmp_link
+	global stream_link
 	msg=str(message.payload.decode("utf-8"))
 	topic=str(message.topic.decode("utf-8"))
 	print msg
-	rtmp_link=msg
+	stream_link=msg
 
 
 @app.route('/reqstream')
 def reqstream():
-	global client, rtmp_link
-	rtmp_link=""
+	global client, stream_link
+	stream_link=""
 	stream_id  = request.args.get('id', None)
 	user_ip=request.remote_addr
 	print "Request Stream.....User: "+ str(user_ip)+" Stream: "+ str(stream_id)
 	reqdict={"User_IP":user_ip,"Stream_ID":stream_id}
 	client.publish("stream/request", json.dumps(reqdict))
-	while(rtmp_link==""):
+	while(stream_link==""):
 		continue
-	return rtmp_link+" .... Stream will be available in a while....."
+	return stream_link+" .... Stream will be available in a while....."
 
 
 @app.route('/archivestream')
