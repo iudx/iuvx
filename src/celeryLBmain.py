@@ -33,10 +33,18 @@ archive_stream_add=[0,""]
 archive_stream_del=[0,""]
 req_all_streams=[0,""]
 origin_ffmpeg_dist_respawn=[0,""]
+user_add=[0,""]
+user_del=[0,""]
+verify_user=[0,""]
+get_origins=[0,""]
+get_dists=[0,""]
+get_users=[0,""]
+get_streams=[0,""]
+get_archives=[0,""]
 
 
 def on_message(client, userdata, message):
-    global origin_ffmpeg_dist_respawn, archive_stream_add,archive_stream_del,req_all_streams,norigin,origin_ffmpeg_respawn,ndist,insert_dist,insert_origin,insert_stream,delete_stream,delete_origin,delete_dist,reqstream,origin_ffmpeg_dist,origin_ffmpeg_stream
+    global get_archives,get_origins, get_dists, get_users, get_streams,verify_user,user_add,user_del,origin_ffmpeg_dist_respawn, archive_stream_add,archive_stream_del,req_all_streams,norigin,origin_ffmpeg_respawn,ndist,insert_dist,insert_origin,insert_stream,delete_stream,delete_origin,delete_dist,reqstream,origin_ffmpeg_dist,origin_ffmpeg_stream
     msg=str(message.payload.decode("utf-8"))
     topic=str(message.topic.decode("utf-8"))
     print topic
@@ -97,6 +105,25 @@ def on_message(client, userdata, message):
         lbc.OriginStat.delay(msg) 
     elif topic=="dist/stat":
         lbc.DistStat.delay(msg)
+    elif topic=="user/add":
+        user_add[0]=1
+        user_add[1]=msg
+    elif topic=="user/del":
+        user_del[0]=1
+        user_del[1]=msg
+    elif topic=="verify/user":
+        verify_user[0]=1
+        verify_user[1]=msg
+    elif topic=="origin/get":
+        get_origins[0]=1
+    elif topic=="dist/get":
+        get_dists[0]=1
+    elif topic=="stream/get":
+        get_streams[0]=1
+    elif topic=="user/get":
+        get_users[0]=1
+    elif topic=="archive/get":
+        get_archives[0]=1
 
         # print topic+" "+msg
             # diststreams[ip]=streams
@@ -106,7 +133,7 @@ mqttServerParams = {}
 mqttServerParams["url"] = "10.156.14.141"
 mqttServerParams["port"] = 1883
 mqttServerParams["timeout"] = 60
-mqttServerParams["topic"] = [("db/dist/ffmpeg/respawn",0),("archive/delete",0),("request/allstreams",0),("archive/add",0),("db/origin/ffmpeg/respawn",0),("origin/stat",0),("dist/stat",0),("origin/add",0),("origin/delete",0),("dist/add",0),("dist/delete",0),("stream/add",0),("stream/delete",0),("stream/request",0),("db/origin/ffmpeg/dist/spawn",0),("db/origin/ffmpeg/stream/spawn",0)]
+mqttServerParams["topic"] = [("origin/get",0),("dist/get",0),("archive/get",0),("stream/get",0),("user/get",0),("verify/user",0),("user/add",0),("user/del",0),("db/dist/ffmpeg/respawn",0),("archive/delete",0),("request/allstreams",0),("archive/add",0),("db/origin/ffmpeg/respawn",0),("origin/stat",0),("dist/stat",0),("origin/add",0),("origin/delete",0),("dist/add",0),("dist/delete",0),("stream/add",0),("stream/delete",0),("stream/request",0),("db/origin/ffmpeg/dist/spawn",0),("db/origin/ffmpeg/stream/spawn",0)]
 mqttServerParams["onMessage"] = on_message
 client = MQTTPubSub(mqttServerParams)
 
@@ -118,6 +145,7 @@ def monitorTaskResult(res):
     while(True):
         if res.ready():
             retval=res.get()
+            print retval
             if retval:
                 if isinstance(retval,dict):
                     client.publish(retval["topic"],json.dumps(retval["ddict"]))
@@ -191,6 +219,39 @@ if __name__=="__main__":
             res=lbc.OriginFFmpegDistRespawn.delay( origin_ffmpeg_dist_respawn)
             threading.Thread(target=monitorTaskResult,args=(res,)).start()
             origin_ffmpeg_dist_respawn=[0,""]
+        elif user_add[0]:
+            print user_add[1]
+            res=lbc.AddUser.delay(user_add)
+            threading.Thread(target=monitorTaskResult,args=(res,)).start()
+            user_add=[0,""]
+        elif user_del[0]:
+            res=lbc.DelUser.delay(user_del)
+            threading.Thread(target=monitorTaskResult,args=(res,)).start()
+            user_del=[0,""]
+        elif verify_user[0]:
+            res=lbc.VerifyUser.delay(verify_user)
+            threading.Thread(target=monitorTaskResult,args=(res,)).start()
+            verify_user=[0,""]
+        elif get_users[0]:
+            res=lbc.GetUsers.delay()
+            threading.Thread(target=monitorTaskResult,args=(res,)).start()
+            get_users=[0,""]
+        elif get_archives[0]:
+            res=lbc.GetArchives.delay()
+            threading.Thread(target=monitorTaskResult,args=(res,)).start()
+            get_archives=[0,""]
+        elif get_dists[0]:
+            res=lbc.GetDists.delay()
+            threading.Thread(target=monitorTaskResult,args=(res,)).start()
+            get_dists=[0,""]   
+        elif get_origins[0]:
+            res=lbc.GetOrigins.delay()
+            threading.Thread(target=monitorTaskResult,args=(res,)).start()
+            get_origins=[0,""]
+        elif get_streams[0]:
+            res=lbc.GetStreams.delay()
+            threading.Thread(target=monitorTaskResult,args=(res,)).start()
+            get_streams=[0,""]
         else:
             continue
     # 
