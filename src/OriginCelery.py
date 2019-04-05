@@ -74,7 +74,7 @@ def OriginFfmpegDistRespawn(origin_ffmpeg_dist_respawn):
 	logger.info( "FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2]))
 	logger.info( " ".join(cmd))
 	senddict={"CMD":" ".join(cmd),"FROM_IP":msg["Origin_IP"],"Stream_ID":msg["Stream_ID"],"TO_IP":msg["Dist_IP"],"RTSP_CMD":" ".join(rtsp_cmd)}
-	return {"topic":"db/origin/ffmpeg/dist/spawn","ddcit":(senddict)}
+	return {"topic":"db/origin/ffmpeg/dist/spawn","ddict":(senddict)}
 	# col.insert_one(msg)
 
 @app.task
@@ -105,3 +105,4 @@ def OriginFfmpegArchive(msg,length):
 	logger.info(" ".join(cmd))
 	proc=sp.Popen(" ".join(cmd),stdout=FNULL, stderr=FNULL,stdin=FNULL,shell=True,preexec_fn=os.setpgrp)
 	logger.info("FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2]))
+

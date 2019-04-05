@@ -152,8 +152,10 @@ def monitorTaskResult(res):
                     time.sleep(0.1)
                 elif isinstance(retval,list):
                     for i in retval:
+                        if i["topic"]=="origin/ffmpeg/stream/stat/spawn" or i["topic"]=="dist/ffmpeg/stream/stat/spawn":
+                            time.sleep(30)
                         client.publish(i["topic"],json.dumps(i["ddict"]))
-                        time.sleep(30)
+                        time.sleep(0.1)
             break
 
 
