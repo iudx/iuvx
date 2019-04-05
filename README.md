@@ -1,4 +1,4 @@
-# API-Server
+# APIs (Internal)
 http://10.156.14.141:8103
 
 # Vid-IoT
