@@ -2,9 +2,11 @@
 
 
 
+from __future__ import absolute_import
 from celery import Celery
 #celery
 from celery.utils.log import get_task_logger
+
 
 import json
 from MQTTPubSub import MQTTPubSub
@@ -451,6 +453,8 @@ def DelUser(user_del):
 
 @app.task
 def VerifyUser(verify_user):
+	print("Verifying ")
+	print(verify_user)
 	msg=json.loads(verify_user[1])
 	if col5.count!=0:
 		for i in col5.find():

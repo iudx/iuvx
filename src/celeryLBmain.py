@@ -130,7 +130,7 @@ def on_message(client, userdata, message):
      
 #MQTT Params
 mqttServerParams = {}
-mqttServerParams["url"] = "10.156.14.141"
+mqttServerParams["url"] = "10.156.14.138"
 mqttServerParams["port"] = 1883
 mqttServerParams["timeout"] = 60
 mqttServerParams["topic"] = [("origin/get",0),("dist/get",0),("archive/get",0),("stream/get",0),("user/get",0),("verify/user",0),("user/add",0),("user/del",0),("db/dist/ffmpeg/respawn",0),("archive/delete",0),("request/allstreams",0),("archive/add",0),("db/origin/ffmpeg/respawn",0),("origin/stat",0),("dist/stat",0),("origin/add",0),("origin/delete",0),("dist/add",0),("dist/delete",0),("stream/add",0),("stream/delete",0),("stream/request",0),("db/origin/ffmpeg/dist/spawn",0),("db/origin/ffmpeg/stream/spawn",0)]

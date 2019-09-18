@@ -229,7 +229,7 @@ if __name__ == "__main__":
     # mydb=mongoclient["Origin_Streams"]
     # col1=mydb["Streams"]
     statPageURL = "http://localhost:8080/stat"
-    mqttServer = "10.156.14.141"
+    mqttServer = "10.156.14.138"
     mqttTopics = [("dist/ffmpeg/stream/stat/spawn", 0),
                   ("origin/ffmpeg/kill", 0),
                   ("lb/request/allstreams", 0),

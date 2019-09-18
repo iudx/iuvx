@@ -56,7 +56,7 @@ def monitorTaskResult(res):
 
 #MQTT Params
 mqttServerParams = {}
-mqttServerParams["url"] = "10.156.14.141"
+mqttServerParams["url"] = "10.156.14.138"
 mqttServerParams["port"] = 1883
 mqttServerParams["timeout"] = 60
 mqttServerParams["topic"] = [("origin/ffmpeg/kill",0),("origin/ffmpeg/killall",0)]

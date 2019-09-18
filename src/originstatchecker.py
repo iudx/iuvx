@@ -97,6 +97,7 @@ class Statter():
                 self.numClients= stats["rtmp"]["server"]["application"][1]["live"]["nclients"]
                 stats = stats["rtmp"]["server"]["application"][1]["live"]["stream"]
             except Exception as e:
+		print(100)
                 print(e)
 
             if isinstance(stats, collections.OrderedDict):
@@ -230,7 +231,7 @@ if __name__ == "__main__":
     # mydb=mongoclient["Origin_Streams"]
     # col1=mydb["Streams"]
     statPageURL = "http://localhost:8080/stat"
-    mqttServer = "10.156.14.141"
+    mqttServer = "10.156.14.138"
     mqttTopics = [("origin/ffmpeg/stream/stat/spawn", 0),
                   ("origin/ffmpeg/kill", 0),
                   ("lb/request/allstreams", 0),

@@ -10,7 +10,7 @@ import json
 from celery.utils.log import get_task_logger
 
 
-app=Celery('OriginCelery',backend="redis://",broker="redis://")
+app=Celery('OriginCelery',backend="redis://localhost/1",broker="redis://localhost/1")
 logger = get_task_logger(__name__)
 
 FNULL = open(os.devnull, 'w')

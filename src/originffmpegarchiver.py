@@ -71,7 +71,7 @@ def ffmpeg_archiver(msg,length):
 
 #MQTT Params
 mqttServerParams = {}
-mqttServerParams["url"] = "10.156.14.141"
+mqttServerParams["url"] = "10.156.14.138"
 mqttServerParams["port"] = 1883
 mqttServerParams["timeout"] = 60
 mqttServerParams["topic"] = [("origin/ffmpeg/archive/add",0),("origin/ffmpeg/archive/delete",0)]

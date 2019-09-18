@@ -55,6 +55,7 @@ delarchives=""
 def on_message(client, userdata, message):
 	global addarchives, delarchives, addstreams, adddists, delstreams, deldists, delorigin, addorigin, allorigins, allusers, alldists, allarchives, allstreams, stream_link, addusers, delusers, verified
 	msg=str(message.payload.decode("utf-8"))
+	print(msg)
 	topic=str(message.topic.decode("utf-8"))
 	if topic=="lbsresponse/rtmp":
 		stream_link=msg
@@ -172,6 +173,7 @@ def userfunc():
 @app.route('/request',methods=['POST'])
 #@auth.login_required
 def reqstream():
+        print("Working")
 	if(verify_password(request.headers["username"], request.headers["password"])):
 			global client, stream_link
 			stream_link=""
@@ -367,6 +369,7 @@ def origin():
 				return Response(json.dumps({"success":"ORIGIN server deleted "+ origin_id +" "+ origin_ip}),status=200,mimetype="application/json")
 			else:
 				return Response(json.dumps({"error":"ORIGIN server does not exist"}),status=404,mimetype="application/json")
+
 		elif request.method=="GET":
 			client.publish("origin/get","All origins")
 			while( allorigins==""):

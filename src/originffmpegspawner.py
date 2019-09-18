@@ -76,7 +76,7 @@ def on_message(client, userdata, message):
 
 #MQTT Params
 mqttServerParams = {}
-mqttServerParams["url"] = "10.156.14.141"
+mqttServerParams["url"] = "10.156.14.138"
 mqttServerParams["port"] = 1883
 mqttServerParams["timeout"] = 60
 mqttServerParams["topic"] = [("origin/ffmpeg/dist/respawn",0),("origin/ffmpeg/stream/spawn",0),("origin/ffmpeg/dist/spawn",0),("origin/ffmpeg/respawn",0)]
