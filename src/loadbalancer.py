@@ -11,6 +11,8 @@ from MQTTPubSub import MQTTPubSub
 
 import json
 
+print("Starting load balancer !!!!")
+
 # LBS Params
 sorigin=""
 sdist=""

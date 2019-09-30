@@ -1,6 +1,3 @@
-# APIs (Internal)
-http://10.156.14.141:8103
-
 # Vid-IoT
 Distributed Video-IoT framework to support modern demands for high fidelity, high throughput and automatable video feeds.
 
