@@ -17,12 +17,13 @@ import os
 
 
 LB_IP = os.environ["LB_IP"]
+LB_PORT = os.environ["LB_PORT"]
 
-if LB_IP is None:
-    print("Error! LB_IP not set")
+if LB_IP is None or LB_PORT is None:
+    print("Error! LB_IP and LB_PORT not set")
     sys.exit(0)
 
-print("Starting server on : ", LB_IP)
+print("Starting server on - ", LB_IP + ":" + LB_PORT)
 
 
 auth = HTTPBasicAuth()
@@ -444,4 +445,4 @@ client = MQTTPubSub(mqttServerParams)
 
 if __name__ == "__main__":
     client.run()
-    app.run(host=LB_IP, threaded=True, debug=True)
+    app.run(host=LB_IP, port=LB_PORT, threaded=True, debug=True)

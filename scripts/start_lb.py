@@ -2,13 +2,12 @@
 import pymongo
 import subprocess as sp
 import time
-import sys
 
 
 ''' Start the load balancer server '''
 
 
-#def op(p):
+# def op(p):
 #    if p is not None:
 #        outs, _ = p.communicate(timeout=2)
 #        for line in p.stdout.readlines():
@@ -25,16 +24,14 @@ if __name__ == "__main__":
     time.sleep(2)
 
     print("Starting HTTP Server.........")
-    p1 = sp.Popen(["python2", "src/HTTPserver.py", "&"], shell=False)
-    #op(p1)
+    p1 = sp.Popen(["nohup", "python", "src/HTTPserver.py", "&"], shell=False)
 
     print("Starting HTTP Server.........")
-    p2 = sp.Popen(["celery", "-A", "loadbalancercelery", 
-        "worker", "--workdir", "./src", "--loglevel=info"], shell=False)
-    #op(p2)
+    p2 = sp.Popen(["celery", "-A", "loadbalancercelery",
+                   "worker", "--workdir", "./src", "-f celery.out", "--loglevel", "info"],
+                  shell=False)
 
     print("Starting LoadBalancer...........")
-    p3 = sp.Popen(["python2", "src/celeryLBmain.py", "&"], shell=False)
-    #op(p3)
+    p3 = sp.Popen(["nohup", "python", "src/celeryLBmain.py", "&"], shell=False)
 
     print("Video Server Setup Complete....")
