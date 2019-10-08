@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "$schema": "http://json-schema.org/schema#",
+    "description": "[Request Archive] request schema",
+    "properties": {
+        "stream_id": {
+            "type": "string"
+        },
+        "start_date": {
+            "type": "string",
+            "format": "date"
+        },
+        "start_time": {
+            "type": "string",
+            "format": "time"
+        },
+        "end_date": {
+            "type": "string",
+            "format": "date"
+        },
+        "end_time": {
+            "type": "string",
+            "format": "time"
+        },
+        "job_id": {
+            "type": "string"
+        }
+    }
+}

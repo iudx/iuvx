@@ -1,0 +1,31 @@
+{
+    "type": "array",
+    "$schema": "http://json-schema.org/schema#",
+    "description": "[Add Streams] response schema",
+    "items": {
+        "type": "object",
+        "properties": {
+            "origin_id": {
+                "type": "string"
+            },
+            "origin_ip": {
+                "type": "string"
+            },
+            "streams": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "stream_id": {
+                            "type": "string"
+                        },
+                        "stream_ip": {
+                            "type": "string",
+                            "format": "uri"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "$schema": "http://json-schema.org/schema#",
+    "description": "[Request Streams] response schema",
+    "properties": {
+        "stream_id": {
+            "type": "string"
+        },
+        "hls": {
+            "type": "string",
+            "format": "url"
+        },
+        "rtmp": {
+            "type": "string",
+            "format": "uri"
+        }
+    }
+}

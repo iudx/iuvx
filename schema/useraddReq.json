@@ -1,0 +1,13 @@
+{
+    "type": "object",
+    "$schema": "http://json-schema.org/schema#",
+    "description": "[User Add] response schema",
+    "properties": {
+        "username": {
+            "type": "string"
+        },
+        "password": {
+            "type": "string"
+        }
+    }
+}
