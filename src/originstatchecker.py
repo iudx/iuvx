@@ -63,7 +63,7 @@ class Statter():
         msg = str(message.payload.decode("utf-8"))
         topic = str(message.topic.decode("utf-8"))
         msgDict = json.loads(msg)
-        print msgDict
+        print(msgDict)
         try:
             if isinstance(msgDict,list):
                     for i in msgDict:
@@ -195,7 +195,7 @@ class Statter():
     def start(self):
         self.mqttc.run()
         time.sleep(0.5)
-        self.mqttc.publish("request/allstreams", self.origin_IP)
+        self.mqttc.publish("request/allstreams", json.dumps({"origin_ip": self.origin_IP}))
         while(self.startFlag == False):
             time.sleep(0.5)
         ''' Start the stat thread '''
