@@ -12,7 +12,13 @@ import json
 import threading
 import Queue
 from influxdb import InfluxDBClient
+import os
+import sys
 
+
+'''
+    TODO: Origin_ID environment variable
+'''
 
 class Statter():
     """Statter Class to check status of NGINX based FFMPEG streams"""
@@ -29,6 +35,10 @@ class Statter():
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         self.origin_IP = str(s.getsockname()[0])
+        self.origin_ID = os.environ("ORIGIN_ID")
+        if(self.origin_ID is None):
+            sys.exit(0)
+
         s.close()
         ''' MQTT Backend '''
         self.mqttServerParams = {}
@@ -51,7 +61,7 @@ class Statter():
     def addNewStream(self, stream_id, stream_ip):
         with self.dictLock:
             print("Adding Stream \t" + str(stream_id))
-            self.registeredStreams[stream_id] = {"Stream_IP": stream_ip,
+            self.registeredStreams[stream_id] = {"stream_ip": stream_ip,
                 "Status": 1,"Revived":0, "Timer":None, "InBW":0}
 
     def deleteStream(self, streamId):
@@ -67,14 +77,14 @@ class Statter():
         try:
             if isinstance(msgDict,list):
                     for i in msgDict:
-                        if i["Origin_IP"] == self.origin_IP:
+                        if i["origin_ip"] == self.origin_IP:
                             if topic == "origin/ffmpeg/kill":
-                                self.deleteStream(i["Stream_ID"])
+                                self.deleteStream(i["stream_id"])
             else:         
-                if msgDict["Origin_IP"] == self.origin_IP:
+                if msgDict["origin_ip"] == self.origin_IP:
                     if topic == "origin/ffmpeg/stream/stat/spawn":
                         self.addNewStream(
-                        msgDict["Stream_ID"], msgDict["Stream_IP"])
+                        msgDict["stream_id"], msgDict["stream_ip"])
                     if topic == "origin/ffmpeg/killall":
                         with self.dictLock:
                             self.registeredStreams = {}
@@ -83,7 +93,7 @@ class Statter():
                         if (msgDict["Stream_List"]):
                             streamList = msgDict["Stream_List"]
                             for stream in streamList:
-                                self.addNewStream(stream["Stream_ID"], stream["Stream_IP"])
+                                self.addNewStream(stream["stream_id"], stream["stream_ip"])
                         self.startFlag = True
         except Exception as e:
             print(e)
@@ -146,9 +156,9 @@ class Statter():
                 print("Missing")
                 print(self.registeredStreams[stream])
                 streamId = stream
-                streamIp = self.registeredStreams[stream]["Stream_IP"]
-                streamDict = {"Stream_IP": streamIp,
-                              "Stream_ID": streamId, "Origin_IP": self.origin_IP}
+                streamIp = self.registeredStreams[stream]["stream_ip"]
+                streamDict = {"stream_ip": streamIp,
+                              "stream_id": streamId, "origin_ip": self.origin_IP}
                 print("Publishing")
                 print(streamDict)
                 self.mqttc.publish("db/origin/ffmpeg/respawn",
@@ -158,7 +168,7 @@ class Statter():
     def logger(self):
         ''' Replace with publisher here '''
         while(True):
-            self.mqttc.publish("origin/stat",json.dumps({"Origin_IP":self.origin_IP,"NClients":str(self.numClients)}))
+            self.mqttc.publish("origin/stat",json.dumps({"origin_id":self.origin_ID,"num_clients":str(self.numClients)}))
             epochTime = int(time.time()) * 1000000000
             self.logDataFlag = False
             with self.dictLock:

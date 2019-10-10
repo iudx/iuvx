@@ -416,16 +416,15 @@ def origin():
             '''
                 Delete a  specified origin server
                 Args:
-                    dict (str): {"origin_id": "xyz", "stream_ip": "uri-format"}
+                    dict (str): {"origin_id": "xyz"}
                 Returns:
                     str: If success - 200 {}
                          If failed - 404 {}
             '''
             data = request.get_json(force=True)
-            origin_ip = data["origin_ip"]
             origin_id = data["origin_id"]
-            print("Deleted Origin Server " + str(origin_ip))
-            origindeldict = {"origin_id": origin_id, "origin_ip": origin_ip}
+            print("Deleted Origin Server " + str(origin_id))
+            origindeldict = {"origin_id": origin_id}
             client.publish("origin/delete", json.dumps(origindeldict))
             while (delorigin == ""):
                 continue
@@ -479,7 +478,7 @@ def dist():
             dist_ip = data["dist_ip"]
             dist_id = data["dist_id"]
             print("Added Distribution "+str(dist_ip))
-            distadddict = {"Dist_ID": dist_id, "Dist_IP": dist_ip}
+            distadddict = {"dist_id": dist_id, "dist_ip": dist_ip, "num_clients": 0}
             client.publish("dist/add", json.dumps(distadddict))
             while(adddists == ""):
                 continue
@@ -494,25 +493,26 @@ def dist():
             '''
                 Delete a distribution server
                 Args:
-                    dict (str): {"dist_id": "xyz", "dist_ip": "uri-format"}
+                    dict (str): {"dist_id": "xyz"}
                 Returns:
                     str: If success - 200 {}
                          If failed - 404 {}
             '''
             data = request.get_json(force=True)
-            dist_ip = data["ip"]
             dist_id = data["id"]
-            print("Deleted Distribution "+str(dist_ip))
-            distdeldict = {"Dist_ID": dist_id, "Dist_IP": dist_ip}
+            print("Deleted Distribution "+str(dist_id))
+            distdeldict = {"dist_id": dist_id}
             client.publish("dist/delete", json.dumps(distdeldict))
             while (deldists == ""):
                 continue
             retval = deldists
             deldists = ""
             if retval:
-                return Response(json.dumps({}), status=200, mimetype="application/json")
+                return Response(json.dumps({}),
+                                status=200, mimetype="application/json")
             else:
-                return Response(json.dumps({}), status=404, mimetype="application/json")
+                return Response(json.dumps({}),
+                                status=404, mimetype="application/json")
 
         elif request.method == "GET":
             '''

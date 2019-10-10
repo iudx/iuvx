@@ -79,13 +79,35 @@ class Table():
     def delete(self, doc):
         self.collection.delete_one(doc)
 
+    def deleteMany(self, doc):
+        self.collection.delete_many(doc)
+
     def count(self):
         return self.collection.count()
 
 
+'''
+    {origin_id: string, origin_ip: string[uri], num_clients: int}
+'''
 originTable = Table(mongoDB, "originTable")
+
+'''
+    {cmd: string, from_ip: string, stream_ip: string,
+     to_ip: string, rtsp_cmd: string}
+    col4
+'''
 ffmpegProcsTable = Table(mongoDB, "ffmpegProcsTable")
+
+'''
+    {origin_id: string, origin_ip: string[uri], num_clients: int}
+    col3
+'''
 streamsTable = Table(mongoDB, "streams")
+
+'''
+    {dist_id: string, dist_ip: string[uri], num_clients: int}
+'''
+distTable = Table(mongoDB, "distTable")
 
 
 
@@ -96,7 +118,7 @@ def search_archives():
     if col6.count() != 0:
         for i in col6.find():
             archivejobid.append(i["Job_ID"])
-            archivestream.append(i["Stream_ID"])
+            archivestream.append(i["stream_id"])
         return archivestream, archivejobid
     else:
         return [], []
@@ -109,8 +131,8 @@ def search_dist():
     dist_ids = []
     if col2.count() != 0:
         for i in col2.find():
-            dist_ips.append(i["Dist_IP"])
-            dist_ids.append(i["Dist_ID"])
+            dist_ips.append(i["dist_ip"])
+            dist_ids.append(i["dist_id"])
         return dist_ips, dist_ids
     else:
         return [], []
@@ -122,8 +144,8 @@ def search_stream():
     stream_ids = []
     if col3.count() != 0:
         for i in col3.find():
-            stream_ips.append(i["Stream_IP"])
-            stream_ids.append(i["Stream_ID"])
+            stream_ips.append(i["stream_ip"])
+            stream_ids.append(i["stream_id"])
         return stream_ips, stream_ids
     else:
         return [], []
@@ -139,11 +161,6 @@ def search_users():
     else:
         return []
 
-# On_message paho.mqtt
-
-
-# All Celery functions
-
 
 @app.task
 def GetUsers():
@@ -153,17 +170,147 @@ def GetUsers():
 
 @app.task
 def GetOrigins():
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Show all origin servers
+        Response: HTTPServer.py
+    '''
     res = json.dumps(originTable.findAll())
     return {"topic": "lbsresponse/origin/all", "msg": res}
 
 
 @app.task
-def GetDists():
-    msg = {}
+def InsertOrigin(msg):
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Origin insertion requests
+        Response: HTTPServer.py
+    '''
+    logger.info("Inserting Origin")
+    msg = json.loads(msg)
+    ret = originTable.insertOne(msg)
+    if ret == 1:
+        logger.info("Added origin ", msg["origin_id"])
+        return {"topic": "lbsresponse/origin/add", "msg": True}
+    else:
+        logger.info("Origin already present", msg["origin_ip"])
+        return {"topic": "lbsresponse/origin/add", "msg": False}
+
+
+@app.task
+def OriginStat(msg):
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Update num_clients
+        Response: None
+    '''
+    msg = json.loads(msg)
+    originTable.update({"origin_id": msg["origin_id"]},
+                       {"num_clients": msg["num_clients"]})
+
+
+@app.task
+def DeleteOrigin(msg):
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Origin deletion requests
+        Response: HTTPServer.py
+        TODO: Kill origin streams
+    '''
+    logger.info("Deleting Origin")
+    ret = originTable.delete({"origin_id": msg["origin_id"]})
+    if ret == 1:
+        logger.info("Deleted origin ", msg["origin_id"])
+        ffmpegProcsTable.deleteMany({"to_id": msg["origin_id"]})
+        ffmpegProcsTable.deleteMany({"origin_id": msg["origin_id"]})
+        streamsTable.deleteMany({"from_id": msg["origin_id"]})
+        logger.info("Origin Deleted----> ID:" + " ID:"+str(msg["origin_id"]))
+        return [{"topic": "lbsresponse/origin/del", "msg": True},
+                {"topic": "origin/ffmpeg/killall", "msg": msg}]
+    else:
+        return {"topic": "lbsresponse/origin/del", "msg": False}
+
+
+@app.task
+def UpdateOriginStream(msg):
+    '''
+        Trigger: OriginCelery.py
+        Handles: adding ffmpeg stream to db once
+                 it's added at the origin server
+    '''
+    msg = json.loads(msg)
+    logger.info(str(msg["stream_id"]) +
+                " stream has been started to origin " + str(msg["to_ip"]))
+    ffmpegProcsTable.insertOne(msg)
+    streamsTable.update({"stream_id": msg["stream_id"]},
+                        {"$set": {"origin_ip": msg["to_ip"]}})
+    time.sleep(0.1)
+    return 0
+
+
+@app.task
+def InsertDist(msg):
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Dist insertion requests
+        Response: HTTPServer.py
+    '''
+    logger.info("Inserting Dist")
     dist_ips, dist_ids = search_dist()
-    for i in range(len(dist_ips)):
-        msg[dist_ips[i]] = dist_ids[i]
-    return {"topic": "lbsresponse/dist/all", "ddict": msg}
+    msg = json.loads(msg)
+    ret = distTable.insertOne(msg)
+    if ret == 1:
+        logger.info("Added dist", msg["dist_id"])
+        return {"topic": "lbsresponse/dist/add", "msg": True}
+    else:
+        logger.info("Dist already present", msg["dist_ip"])
+
+
+@app.task
+def DeleteDist(msg):
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Dist deletion requests
+        Response: HTTPServer.py
+    '''
+    logger.info("Deleting Dist")
+    msg = json.loads(msg)
+    ret = distTable.delete({"dist_id": msg["dist_id"]})
+    killlist = []
+    if ret == 1:
+        logger.info("Deleted dist ", msg["dist_id"])
+        killlist = ffmpegProcsTable.findAll({"dist_id": msg["dist_id"]})
+        ffmpegProcsTable.deleteMany({"to_id": msg["dist_id"]})
+        ffmpegProcsTable.deleteMany({"dist_id": msg["dist_id"]})
+        streamsTable.deleteMany({"from_id": msg["dist_id"]})
+        logger.info("Origin Deleted----> ID:" + " ID:"+str(msg["dist_id"]))
+        return [{"topic": "lbsresponse/dist/del", "msg": True},
+                {"topic": "origin/ffmpeg/kill", "msg": killlist}]
+    else:
+        return {"topic": "lbsresponse/dist/del", "msg": False}
+
+
+@app.task
+def GetDists():
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Show all dist servers
+        Response: HTTPServer.py
+    '''
+    res = json.dumps(distTable.findAll())
+    return {"topic": "lbsresponse/dist/all", "msg": res}
+
+
+@app.task
+def DistStat(msg):
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Update num_clients
+        Response: None
+    '''
+    msg = json.loads(msg)
+    distTable.update({"dist_id": msg["dist_id"]},
+                     {"num_clients": msg["num_clients"]})
 
 
 @app.task
@@ -192,111 +339,25 @@ def ReqAllStreams(msg):
     resp = []
     ''' TODO !! '''
     for i in originTable.findAll({"origin_ip": msg["origin_ip"]}):
-        msg = {"Origin_IP": i["Origin_IP"], "Stream_List": []}
+        msg = {"origin_ip": i["origin_ip"], "Stream_List": []}
         for j in col3.find():
-            if j["Origin_IP"] == i["Origin_IP"]:
+            if j["origin_ip"] == i["origin_ip"]:
                 msg["Stream_List"].append(
-                    {"Stream_ID": j["Stream_ID"], "Stream_IP": j["Stream_IP"]})
+                    {"stream_id": j["stream_id"], "stream_ip": j["stream_ip"]})
         logger.info(msg)
     for j in col2.find():
-        msg = {"Dist_IP": ip, "Stream_List": []}
+        msg = {"dist_ip": ip, "Stream_List": []}
         for i in col3.find():
-            if i["Dist_IP"] == j["Dist_IP"]:
+            if i["dist_ip"] == j["dist_ip"]:
                 msg["Stream_List"].append(
-                    {"Stream_ID": i["Stream_ID"], "Stream_IP": i["Stream_IP"]})
+                    {"stream_id": i["stream_id"], "stream_ip": i["stream_ip"]})
         logger.info(msg)
     return {"topic": "lb/request/allstreams", "ddict": msg}
 
 
-@app.task
-def InsertOrigin(msg):
-    ''' Handles Origin insertion requests '''
-    logger.info("Inserting Origin")
-    msg = json.loads(msg)
-    ret = originTable.insertOne(msg)
-    if ret == 1:
-        logger.info("Added origin ", msg["origin_id"])
-        return {"topic": "lbsresponse/origin/add", "msg": True}
-    else:
-        logger.info("Origin already present", msg["origin_ip"])
-        return {"topic": "lbsresponse/origin/add", "msg": False}
 
 
-@app.task
-def DeleteOrigin(msg):
-    ''' Handles Origin delete requests '''
-    logger.info("Deleting Origin")
-    ret = originTable.delete(msg)
-    if ret == 1:
-        logger.info("Deleted origin ", msg["origin_id"])
-        ''' TODO: Replace col4 '''
-        col4.delete_many({"TO_IP": msg["Origin_IP"]})
-        col4.delete_many({"FROM_IP": msg["Origin_IP"]})
-        ''' TODO: Replace col3 '''
-        col3.delete_many({"Origin_IP": msg["Origin_IP"]})
-        logger.info("Origin Deleted----> ID:" +
-                    str(msg["Origin_ID"])+" IP:"+str(msg["Origin_IP"]))
-        return [{"topic": "lbsresponse/origin/del", "msg": True}, 
-                {"topic": "origin/ffmpeg/killall", "msg": msg}]
-    else:
-        return {"topic": "lbsresponse/origin/del", "msg": False}
 
-
-@app.task
-def OriginFfmpegStream(origin_ffmpeg_stream):
-    msg = json.loads(origin_ffmpeg_stream[1])
-    #client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
-    logger.info(str(msg["Stream_ID"]) +
-                " stream has been started to origin " + str(msg["TO_IP"]))
-    col4.insert_one(msg)
-    col3.update_one({"Stream_ID": msg["Stream_ID"]}, {
-                    "$set": {"Origin_IP": msg["TO_IP"]}}, upsert=True)
-    time.sleep(0.1)
-    return 0
-
-
-@app.task
-def InsertDist(insert_dist):
-    dist_ips, dist_ids = search_dist()
-    msg = json.loads(insert_dist[1])
-    #client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
-    if msg["Dist_ID"] not in dist_ids and msg["Dist_IP"] not in dist_ips:
-        col2.insert_one(
-            {"Dist_IP": msg["Dist_IP"], "Dist_ID": msg["Dist_ID"], "NClients": 0})
-        logger.info("Distribution Added----> ID:" +
-                    str(msg["Dist_ID"])+" IP:"+str(msg["Dist_IP"]))
-        return {"topic": "lbsresponse/dist/add", "ddict": True}
-    else:
-        logger.info("Distribution already present----> ID:" +
-                    str(msg["Dist_ID"])+" IP:"+str(msg["Dist_IP"]))
-        return {"topic": "lbsresponse/dist/add", "ddict": False}
-    # ndist[msg["Dist_IP"]]=0
-    # logger.info(ndist)
-
-
-@app.task
-def DeleteDist(delete_dist):
-    dist_ips, dist_ids = search_dist()
-    msg = json.loads(delete_dist[1])
-    killist = []
-    #client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
-    if msg["Dist_ID"] not in dist_ids and msg["Dist_IP"] not in dist_ips:
-        logger.info("Distribution not present----> ID:" +
-                    str(msg["Dist_ID"])+" IP:"+str(msg["Dist_IP"]))
-        return {"topic": "lbsresponse/dist/del", "ddict": False}
-    else:
-        for i in col4.find():
-            if i["TO_IP"] == msg["Dist_IP"]:
-                killist.append({"Origin_IP": i["FROM_IP"], "CMD": i["CMD"]})
-        col4.delete_many({"TO_IP": msg["Dist_IP"]})
-        col2.delete_one({"Dist_IP": msg["Dist_IP"], "Dist_ID": msg["Dist_ID"]})
-        col3.update_many({"Dist_IP": msg["Dist_IP"]}, {
-                         "$set": {"Dist_IP": ""}}, upsert=True)
-        logger.info("Distribution Deleted----> ID:" +
-                    str(msg["Dist_ID"])+" IP:"+str(msg["Dist_IP"]))
-        return [{"topic": "lbsresponse/dist/del", "ddict": True}, {"topic": "origin/ffmpeg/kill", "ddict": killist}]
-    #     del ndist[msg["Dist_IP"]]
-    # logger.info(ndist)
 
 
 @app.task
@@ -311,20 +372,20 @@ def InsertStream(insert_stream):
         stream_ips, stream_ids = search_stream()
         msg = json.loads(insert_stream[1])
         # client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
-        if msg["Stream_ID"] not in stream_ids:
+        if msg["stream_id"] not in stream_ids:
             col3.insert_one(
-                {"Stream_IP": msg["Stream_IP"], "Stream_ID": msg["Stream_ID"], "Origin_IP": "", "Dist_IP": ""})
+                {"stream_ip": msg["stream_ip"], "stream_id": msg["stream_id"], "origin_ip": "", "dist_ip": ""})
             logger.info(str(sorigin)+" " +
-                        str(msg["Stream_ID"])+" "+str(msg["Stream_IP"]))
-            ddict = {"Origin_IP": sorigin,
-                     "Stream_ID": msg["Stream_ID"], "Stream_IP": msg["Stream_IP"]}
+                        str(msg["stream_id"])+" "+str(msg["stream_ip"]))
+            ddict = {"origin_ip": sorigin,
+                     "stream_id": msg["stream_id"], "stream_ip": msg["stream_ip"]}
             logger.info("Sending Dict")
             logger.info("Stream Added----> ID:" +
-                        str(msg["Stream_ID"])+" IP:"+str(msg["Stream_IP"]))
-            return [{"topic": "lbsresponse/stream/add", "ddict": True}, {"topic": "origin/ffmpeg/stream/spawn", "ddict": ddict}, {"topic": "origin/ffmpeg/stream/stat/spawn", "ddict": ddict}]
+                        str(msg["stream_id"])+" IP:"+str(msg["stream_ip"]))
+            return [{"topic": "Check with inserted collectionlbsresponse/stream/add", "ddict": True}, {"topic": "origin/ffmpeg/stream/spawn", "ddict": ddict}, {"topic": "origin/ffmpeg/stream/stat/spawn", "ddict": ddict}]
         else:
             logger.info("Stream already present----> ID:" +
-                        str(msg["Stream_ID"])+" IP:"+str(msg["Stream_IP"]))
+                        str(msg["stream_id"])+" IP:"+str(msg["stream_ip"]))
             return {"topic": "lbsresponse/stream/add", "ddict": False}
 
 
@@ -335,27 +396,27 @@ def DeleteStream(delete_stream):
     msg = json.loads(delete_stream[1])
     logger.info(msg)
     #client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
-    if msg["Stream_ID"] not in stream_ids and msg["Stream_IP"] not in stream_ips:
+    if msg["stream_id"] not in stream_ids and msg["stream_ip"] not in stream_ips:
         logger.info("Stream not present----> ID:" +
-                    str(msg["Stream_ID"])+" IP:"+str(msg["Stream_IP"]))
+                    str(msg["stream_id"])+" IP:"+str(msg["stream_ip"]))
         return {"topic": "lbsresponse/stream/del", "ddict": False}
     else:
         norigin = []
         for j in originTable.findAll():
-            norigin.append(j["Origin_IP"])
+            norigin.append(j["origin_ip"])
         for i in col4.find():
-            if str(i["Stream_ID"]) == msg["Stream_ID"]:
-                if i["TO_IP"] in norigin:
-                    killist.append({"Origin_IP": i["TO_IP"], "CMD": i["CMD"],
-                                    "Stream_ID": i["Stream_ID"], "Dist_IP": "", "RTSP_CMD": i["RTSP_CMD"]})
-                elif i["FROM_IP"] in norigin:
-                    killist.append({"Origin_IP": i["TO_IP"], "CMD": i["CMD"],
-                                    "Stream_ID": i["Stream_ID"], "Dist_IP": i["TO_IP"], "RTSP_CMD": i["RTSP_CMD"]})
+            if str(i["stream_id"]) == msg["stream_id"]:
+                if i["to_ip"] in norigin:
+                    killist.append({"origin_ip": i["to_ip"], "cmd": i["cmd"],
+                                    "stream_id": i["stream_id"], "dist_ip": "", "rtsp_cmd": i["rtsp_cmd"]})
+                elif i["from_ip"] in norigin:
+                    killist.append({"origin_ip": i["to_ip"], "cmd": i["cmd"],
+                                    "stream_id": i["stream_id"], "dist_ip": i["to_ip"], "rtsp_cmd": i["rtsp_cmd"]})
         col3.delete_one(
-            {"Stream_IP": msg["Stream_IP"], "Stream_ID": msg["Stream_ID"]})
-        col4.delete_many({"Stream_ID": msg["Stream_ID"]})
+            {"stream_ip": msg["stream_ip"], "stream_id": msg["stream_id"]})
+        col4.delete_many({"stream_id": msg["stream_id"]})
         logger.info("Stream Deleted----> ID:" +
-                    str(msg["Stream_ID"])+" IP:"+str(msg["Stream_IP"]))
+                    str(msg["stream_id"])+" IP:"+str(msg["stream_ip"]))
         return [{"topic": "lbsresponse/stream/del", "ddict": True}, {"topic": "origin/ffmpeg/kill", "ddict": killist}]
 
 
@@ -363,7 +424,7 @@ def DeleteStream(delete_stream):
 def RequestStream(reqstream):
     logger.info("Here")
     msg = json.loads(reqstream[1])
-    stream_id = msg["Stream_ID"]
+    stream_id = msg["stream_id"]
     logger.info(stream_id)
     alreadypushedflag = 0
    # client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
@@ -374,47 +435,51 @@ def RequestStream(reqstream):
         if col2.count() != 0:
             ndist = {}
             for j in col2.find():
-                ndist[j["Dist_IP"]] = j["NClients"]
+                ndist[j["dist_ip"]] = j["NClients"]
             for i in col4.find():
-                if (str(i["Stream_ID"]) == stream_id) and (str(i["TO_IP"]) in ndist.keys()):
+                if (str(i["stream_id"]) == stream_id) and (str(i["to_ip"]) in ndist.keys()):
                     logger.info("Should come here if already pushed to a dist")
-                    return {"topic": "lbsresponse/rtmp", "ddict": "RTMP: "+str(i["CMD"].split()[-2])+" RTSP: "+str(i["RTSP_CMD"].split()[-2])+" HLS: http://"+str(i["TO_IP"]+":8080/hls/"+str(i["Stream_ID"]+".m3u8"))}
+                    return {"topic": "lbsresponse/rtmp", "ddict": "RTMP: "+str(i["cmd"].split()[-2])+" RTSP: "+str(i["rtsp_cmd"].split()[-2])+" HLS: http://"+str(i["to_ip"]+":8080/hls/"+str(i["stream_id"]+".m3u8"))}
                     alreadypushedflag = 0
                     break
                 else:
                     alreadypushedflag = 1
             if alreadypushedflag == 1:
-                sdist = col2.find_one(sort=[("NClients", 1)])["Dist_IP"]
+                sdist = col2.find_one(sort=[("NClients", 1)])["dist_ip"]
                 ''' TODO: Logic of load balancing lies here '''
                 sorigin = originTable.findAll()[0]["origin_ip"]
                 logger.info(str(sorigin)+" "+str(sdist)+" "+str(stream_id))
-                stream_ip = col3.find_one({"Stream_ID": stream_id})[
-                    "Stream_IP"]
-                distdict = {"Origin_IP": sorigin, "Dist_IP": sdist,
-                            "Stream_ID": stream_id, "Stream_IP": stream_ip}
-                return [{"topic": "lbsresponse/rtmp", "ddict": "RTMP: "+"rtmp://"+str(sdist)+":1935/dynamic/"+str(stream_id)+" RTSP: rtsp://"+str(sdist)+":80/dynamic/"+str(stream_id)+" HLS: http://"+str(i["TO_IP"]+":8080/hls/"+str(i["Stream_ID"]+".m3u8"))}, {"topic": "origin/ffmpeg/dist/spawn", "ddict": distdict}, {"topic": "dist/ffmpeg/stream/stat/spawn", "ddict": distdict}]
+                stream_ip = col3.find_one({"stream_id": stream_id})[
+                    "stream_ip"]
+                distdict = {"origin_ip": sorigin, "dist_ip": sdist,
+                            "stream_id": stream_id, "stream_ip": stream_ip}
+                return [{"topic": "lbsresponse/rtmp", "ddict": "RTMP: "+"rtmp://"+str(sdist)+":1935/dynamic/"+str(stream_id)+" RTSP: rtsp://"+str(sdist)+":80/dynamic/"+str(stream_id)+" HLS: http://"+str(i["to_ip"]+":8080/hls/"+str(i["stream_id"]+".m3u8"))}, {"topic": "origin/ffmpeg/dist/spawn", "ddict": distdict}, {"topic": "dist/ffmpeg/stream/stat/spawn", "ddict": distdict}]
         else:
             for i in col4.find():
-                if i["Stream_ID"] == stream_id:
-                    return {"topic": "lbsresponse/rtmp", "ddict": "RTMP: "+str(i["CMD"].split()[-2])+" RTSP: "+str(i["RTSP_CMD"].split()[-2])+" HLS: http://"+str(i["TO_IP"]+":8080/hls/"+str(i["Stream_ID"]+".m3u8"))}
+                if i["stream_id"] == stream_id:
+                    return {"topic": "lbsresponse/rtmp", "ddict": "RTMP: "+str(i["cmd"].split()[-2])+" RTSP: "+str(i["rtsp_cmd"].split()[-2])+" HLS: http://"+str(i["to_ip"]+":8080/hls/"+str(i["stream_id"]+".m3u8"))}
     else:
         return[{"topic": "lbsresponse/rtmp", "ddict": False}]
 
 
 @app.task()
-def OriginFfmpegDist(origin_ffmpeg_dist):
-    msg = json.loads(origin_ffmpeg_dist[1])
+def OriginFfmpegDist(msg):
+    msg = json.loads(msg)
     logger.info(msg)
-    #client.publish("logger","Date/Time: "+str(datetime.datetime.now())+" Message: "+str(msg))
-    logger.info(msg["Stream_ID"]+" stream push has been started from origin " +
-                msg["FROM_IP"]+" to distribution "+msg["TO_IP"])
-    col4.insert_one({"CMD": msg["CMD"], "TO_IP": msg["TO_IP"], "FROM_IP": msg["FROM_IP"],
-                     "Stream_ID": msg["Stream_ID"], "RTSP_CMD": msg["RTSP_CMD"]})
-    col3.update_one({"Stream_ID": msg["Stream_ID"], "Origin_IP": msg["FROM_IP"]}, {
-                    "$set": {"Dist_IP": msg["TO_IP"]}}, upsert=True)
-    logger.info(str(msg["CMD"].split()[-2]))
+    logger.info(msg["stream_id"]+" stream push has been started from origin " +
+                msg["from_ip"]+" to distribution "+msg["to_ip"])
+
+    ffmpegProcsTable.insertOne({"cmd": msg["cmd"], "to_ip": msg["to_ip"],
+                                "from_ip": msg["from_ip"],
+                                "stream_id": msg["stream_id"],
+                                "rtsp_cmd": msg["rtsp_cmd"]})
+
+    streamsTable.update({"stream_id": msg["stream_id"],
+                         "origin_ip": msg["from_ip"]},
+                        {"$set": {"dist_ip": msg["to_ip"]}})
+    logger.info(str(msg["cmd"].split()[-2]))
     time.sleep(0.1)
-    return {"topic": "lbsresponse/rtmp", "ddict": str(msg["CMD"].split()[-2])}
+    return {"topic": "lbsresponse/rtmp", "ddict": str(msg["cmd"].split()[-2])}
 
 
 @app.task
@@ -428,15 +493,15 @@ def OriginFfmpegRespawn(origin_ffmpeg_respawn):
 def ArchiveAdd(archive_stream_add):
     msg = json.loads(archive_stream_add[1])
     logger.info(msg)
-    msg["Stream_IP"] = col3.find_one(
-        {"Stream_ID": msg["Stream_ID"]})["Stream_IP"]
-    msg["Origin_IP"] = col3.find_one(
-        {"Stream_ID": msg["Stream_ID"]})["Origin_IP"]
+    msg["stream_ip"] = col3.find_one(
+        {"stream_id": msg["stream_id"]})["stream_ip"]
+    msg["origin_ip"] = col3.find_one(
+        {"stream_id": msg["stream_id"]})["origin_ip"]
 
     archivedstreams, archivedjobs = search_archives()
     if msg["job_id"] not in archivedjobs:
         col6.insert_one(
-            {"Job_ID": msg["job_id"], "Stream_ID": msg["Stream_ID"]})
+            {"Job_ID": msg["job_id"], "stream_id": msg["stream_id"]})
         return [{"topic": "lbsresponse/archive/add", "ddict": True}, {"topic": "origin/ffmpeg/archive/add", "ddict": msg}]
         logger.info(str(msg)+" archiving this......")
     else:
@@ -447,10 +512,10 @@ def ArchiveAdd(archive_stream_add):
 def ArchiveDel(archive_stream_del):
     msg = json.loads(archive_stream_del[1])
     logger.info(msg)
-    msg["Stream_IP"] = col3.find_one(
-        {"Stream_ID": msg["Stream_ID"]})["Stream_IP"]
-    msg["Origin_IP"] = col3.find_one(
-        {"Stream_ID": msg["Stream_ID"]})["Origin_IP"]
+    msg["stream_ip"] = col3.find_one(
+        {"stream_id": msg["stream_id"]})["stream_ip"]
+    msg["origin_ip"] = col3.find_one(
+        {"stream_id": msg["stream_id"]})["origin_ip"]
     archivedstreams, archivedjobs = search_archives()
     if msg["job_id"] not in archivedjobs:
         return {"topic": "lbsresponse/archive/del", "ddict": False}
@@ -464,24 +529,19 @@ def ArchiveDel(archive_stream_del):
 def OriginFFmpegDistRespawn(origin_ffmpeg_dist_respawn):
     msg = json.loads(origin_ffmpeg_dist_respawn[1])
     logger.info(str(msg)+" should come here only when missing becomes active")
-    msg["Origin_IP"] = col3.find_one(
-        {"Stream_IP": msg["Stream_IP"], "Stream_ID": msg["Stream_ID"], "Dist_IP": msg["Dist_IP"]})["Origin_IP"]
+    msg["origin_ip"] = col3.find_one(
+        {"stream_ip": msg["stream_ip"], "stream_id": msg["stream_id"], "dist_ip": msg["dist_ip"]})["origin_ip"]
     return {"topic": "origin/ffmpeg/dist/respawn", "ddict": msg}
 
 
-@app.task
-def OriginStat(msg):
-    msg = json.loads(msg)
-    originTable.update({"origin_ip": msg["origin_ip"]},
-                       {"num_clients": msg["num_clients"]})
 
 
 @app.task
 def DistStat(msg):
     msg = json.loads(msg)
     for i in col2.find():
-        if msg["Dist_IP"] == i["Dist_IP"]:
-            col2.update({"Dist_IP": msg["Dist_IP"]}, {
+        if msg["dist_ip"] == i["dist_ip"]:
+            col2.update({"dist_ip": msg["dist_ip"]}, {
                         "$set": {"NClients": int(msg["NClients"])}}, upsert=True)
 
 

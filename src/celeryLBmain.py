@@ -21,11 +21,7 @@ ndist = {}
 results = []
 
 # All Flags
-insert_origin = [0, ""]
-delete_origin = [0, ""]
-origin_ffmpeg_stream = [0, ""]
 origin_ffmpeg_dist = [0, ""]
-insert_dist = [0, ""]
 delete_dist = [0, ""]
 insert_stream = [0, ""]
 delete_stream = [0, ""]
@@ -38,8 +34,6 @@ origin_ffmpeg_dist_respawn = [0, ""]
 user_add = [0, ""]
 user_del = [0, ""]
 verify_user = [0, ""]
-get_origins = [0, ""]
-get_dists = [0, ""]
 get_users = [0, ""]
 get_streams = [0, ""]
 get_archives = [0, ""]
@@ -56,18 +50,8 @@ class LB():
     def on_message(self, client, userdata, message):
         self.msg = str(message.payload.decode("utf-8"))
         self.action = str(message.topic.decode("utf-8"))
-        elif topic == "db/origin/ffmpeg/stream/spawn":
-            origin_ffmpeg_stream[0] = 1
-            origin_ffmpeg_stream[1] = msg
-        elif topic == "origin/delete":
-            delete_origin[0] = 1
-            delete_origin[1] = msg
-        elif topic == "dist/add":
-            insert_dist[0] = 1
-            insert_dist[1] = msg
-        elif topic == "dist/delete":
-            delete_dist[0] = 1
-            delete_dist[1] = msg
+
+
         elif topic == "stream/add":
             insert_stream[0] = 1
             insert_stream[1] = msg
@@ -94,10 +78,6 @@ class LB():
         elif topic == "archive/delete":
             archive_stream_del[0] = 1
             archive_stream_del[1] = msg
-        elif topic == "origin/stat":
-            lbc.OriginStat.delay(msg)
-        elif topic == "dist/stat":
-            lbc.DistStat.delay(msg)
         elif topic == "user/add":
             user_add[0] = 1
             user_add[1] = msg
@@ -107,10 +87,6 @@ class LB():
         elif topic == "verify/user":
             verify_user[0] = 1
             verify_user[1] = msg
-        elif topic == "origin/get":
-            get_origins[0] = 1
-        elif topic == "dist/get":
-            get_dists[0] = 1
         elif topic == "stream/get":
             get_streams[0] = 1
         elif topic == "user/get":
@@ -159,33 +135,50 @@ if __name__ == "__main__":
     client.run()
     while(True):
         msg = {}
-        # Always setting Load Balancer Params
+
         if self.action == "request/allstreams":
             res = lbc.ReqAllStreams.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            self.action = "idle"
-            self.msg = ""
+
         elif self.action == "origin/add":
             res = lbc.InsertOrigin.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            self.action = "idle"
-            self.msg = ""
-        elif delete_origin[0]:
-            res = lbc.DeleteOrigin.delay(delete_origin)
+
+        elif self.action == "origin/delete":
+            res = lbc.DeleteOrigin.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            delete_origin = [0, ""]
-        elif origin_ffmpeg_stream[0]:
-            res = lbc.OriginFfmpegStream.delay(origin_ffmpeg_stream)
+
+        elif self.action == "origin/stat":
+            lbc.OriginStat.delay(msg)
+
+        elif self.action == "origin/get":
+            res = lbc.GetOrigins.delay()
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            origin_ffmpeg_stream = [0, ""]
-        elif insert_dist[0]:
-            res = lbc.InsertDist.delay(insert_dist)
+
+        elif self.action == "db/origin/ffmpeg/stream/spawn":
+            res = lbc.UpdateOriginStream.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            insert_dist = [0, ""]
-        elif delete_dist[0]:
-            res = lbc.DeleteDist.delay(delete_dist)
+
+        elif self.action == "dist/add":
+            res = lbc.InsertDist.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            delete_dist = [0, ""]
+
+        elif self.action == "dist/delete":
+            res = lbc.DeleteDist.delay(self.msg)
+            threading.Thread(target=monitorTaskResult, args=(res,)).start()
+
+        elif self.action == "dist/get":
+            res = lbc.GetDists.delay()
+            threading.Thread(target=monitorTaskResult, args=(res,)).start()
+
+        elif self.action == "dist/stat":
+            lbc.DistStat.delay(self.msg)
+
+        elif self.action == "db/origin/ffmpeg/dist/spawn":
+            res = lbc.OriginFfmpegDistPush.delay(self.msg)
+            threading.Thread(target=monitorTaskResult, args=(res,)).start()
+
+
         elif insert_stream[0]:
             res = lbc.InsertStream.delay(insert_stream)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
@@ -239,18 +232,14 @@ if __name__ == "__main__":
             res = lbc.GetArchives.delay()
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
             get_archives = [0, ""]
-        elif get_dists[0]:
-            res = lbc.GetDists.delay()
-            threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            get_dists = [0, ""]
-        elif get_origins[0]:
-            res = lbc.GetOrigins.delay()
-            threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            get_origins = [0, ""]
         elif get_streams[0]:
             res = lbc.GetStreams.delay()
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
             get_streams = [0, ""]
         else:
+            self.action = "idle"
+            self.msg = ""
             continue
-    #
+        self.action = "idle"
+        self.msg = ""
+        time.sleep(0.001)
