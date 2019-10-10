@@ -28,6 +28,8 @@ class Vid():
         ''' Root functions '''
         reqLink = self.root_link + "/user"
         resp = requests.post(reqLink, data=json.dumps(self.test_cred))
+        print(resp)
+        print(resp.text)
         print(resp.json())
 
     def deleteUser(self):
@@ -137,6 +139,10 @@ class VidTest(unittest.TestCase):
         print("Inited system")
         self.vs = Vid(self.LB_IP, self.LB_Port,
                       self.ROOT_uname, self.ROOT_passwd)
+
+
+    def test_createUser(self):
+        self.vs.createUser()
 
     def test_simpleFlow(self):
         print("Creating user")

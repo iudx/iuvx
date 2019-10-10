@@ -24,7 +24,7 @@ if __name__ == "__main__":
     time.sleep(2)
 
     print("Starting HTTP Server.........")
-    p1 = sp.Popen(["nohup", "python", "src/HTTPserver.py", "&"], shell=False)
+    #p1 = sp.Popen(["nohup", "python", "src/HTTPserver.py", "&"], shell=False)
 
     print("Starting HTTP Server.........")
     p2 = sp.Popen(["celery", "-A", "loadbalancercelery",

@@ -61,12 +61,20 @@ class Table():
         else:
             return 0
 
+    def update(self, key, doc):
+        res = self.collection.update_one(key, {"$set": doc}, upsert=True)
+        return res.modified_count()
+
     def findOne(self, doc, args=None):
         res = self.collection.find_one(doc, {"_id": 0})
         return res
 
-    def findAll(self):
-        return self.collection.find({}, {"_id": 0})
+    def findAll(self, doc=None):
+        if (doc is not None):
+            res = self.collection.find(doc, {"_id": 0})
+            return res
+        else:
+            return self.collection.find({}, {"_id": 0})
 
     def delete(self, doc):
         self.collection.delete_one(doc)
@@ -77,6 +85,7 @@ class Table():
 
 originTable = Table(mongoDB, "originTable")
 ffmpegProcsTable = Table(mongoDB, "ffmpegProcsTable")
+streamsTable = Table(mongoDB, "streams")
 
 
 
@@ -181,8 +190,8 @@ def ReqAllStreams(msg):
     msg = json.loads(msg)
     ip = msg["origin_ip"]
     resp = []
-    ''' TODO '''
-    for i in col1.find():
+    ''' TODO !! '''
+    for i in originTable.findAll({"origin_ip": msg["origin_ip"]}):
         msg = {"Origin_IP": i["Origin_IP"], "Stream_List": []}
         for j in col3.find():
             if j["Origin_IP"] == i["Origin_IP"]:
@@ -463,10 +472,8 @@ def OriginFFmpegDistRespawn(origin_ffmpeg_dist_respawn):
 @app.task
 def OriginStat(msg):
     msg = json.loads(msg)
-    for i in col1.find():
-        if msg["Origin_IP"] == i["Origin_IP"]:
-            col1.update({"Origin_IP": msg["Origin_IP"]}, {
-                        "$set": {"NClients": int(msg["NClients"])}}, upsert=True)
+    originTable.update({"origin_ip": msg["origin_ip"]},
+                       {"num_clients": msg["num_clients"]})
 
 
 @app.task
