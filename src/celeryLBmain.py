@@ -23,8 +23,6 @@ results = []
 # All Flags
 delete_dist = [0, ""]
 insert_stream = [0, ""]
-delete_stream = [0, ""]
-reqstream = [0, ""]
 archive_stream_add = [0, ""]
 archive_stream_del = [0, ""]
 req_all_streams = [0, ""]
@@ -32,7 +30,6 @@ user_add = [0, ""]
 user_del = [0, ""]
 verify_user = [0, ""]
 get_users = [0, ""]
-get_streams = [0, ""]
 get_archives = [0, ""]
 
 
@@ -49,17 +46,6 @@ class LB():
         self.action = str(message.topic.decode("utf-8"))
 
 
-        elif topic == "stream/add":
-            insert_stream[0] = 1
-            insert_stream[1] = msg
-        elif topic == "stream/delete":
-            delete_stream[0] = 1
-            delete_stream[1] = msg
-        elif topic == "stream/request":
-            reqstream[0] = 1
-            reqstream[1] = msg
-        elif topic == "stream/get":
-            get_streams[0] = 1
 
         elif topic == "user/add":
             user_add[0] = 1
@@ -126,8 +112,12 @@ if __name__ == "__main__":
     while(True):
         msg = {}
 
-        if self.action == "request/allstreams":
-            res = lbc.ReqAllStreams.delay(self.msg)
+        if self.action == "request/origin/streams":
+            res = lbc.ReqAllOriginStreams.delay(self.msg)
+            threading.Thread(target=monitorTaskResult, args=(res,)).start()
+
+        if self.action == "request/dist/streams":
+            res = lbc.ReqAllDistStreams.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
 
         elif self.action == "origin/add":
@@ -177,26 +167,32 @@ if __name__ == "__main__":
             res = lbc.OriginFFmpegDistRespawn.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
 
-
-
-
-
-
-        elif insert_stream[0]:
-            res = lbc.InsertStream.delay(insert_stream)
+        elif self.action == "stream/add":
+            res = lbc.InsertStream.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            insert_stream = [0, ""]
-        elif delete_stream[0]:
-            res = lbc.DeleteStream.delay(delete_stream)
+
+        elif self.action == "stream/delete":
+            res = lbc.DeleteStream.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            delete_stream = [0, ""]
-        elif reqstream[0]:
-            res = lbc.RequestStream.delay(reqstream)
+
+        elif self.action == "stream/request":
+            res = lbc.RequestStream.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            reqstream = [0, ""]
+
+        elif self.action == "stream/get":
+            res = lbc.GetStreams.delay()
+            threading.Thread(target=monitorTaskResult, args=(res,)).start()
+
+        elif self.action == "archive/add":
+            res = lbc.ArchiveAdd.delay(self.msg)
+            threading.Thread(target=monitorTaskResult, args=(res,)).start()
+
+
+
+
+
+
         elif archive_stream_add[0]:
-            res = lbc.ArchiveAdd.delay(archive_stream_add)
-            threading.Thread(target=monitorTaskResult, args=(res,)).start()
             archive_stream_add = [0, ""]
         elif archive_stream_del[0]:
             res = lbc.ArchiveDel.delay(archive_stream_del)
@@ -223,10 +219,6 @@ if __name__ == "__main__":
             res = lbc.GetArchives.delay()
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
             get_archives = [0, ""]
-        elif get_streams[0]:
-            res = lbc.GetStreams.delay()
-            threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            get_streams = [0, ""]
         else:
             self.action = "idle"
             self.msg = ""

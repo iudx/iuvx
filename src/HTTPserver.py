@@ -265,7 +265,7 @@ def reqstream():
         stream_id = data["stream_id"]
         user_ip = request.remote_addr
         ''' TODO: make schema changes in accordance to schema '''
-        reqdict = {"User_IP": user_ip, "Stream_ID": stream_id}
+        reqdict = {"user_ip": user_ip, "stream_id": stream_id}
         client.publish("stream/request", json.dumps(reqdict))
         ''' TODO: Remove mqtt publish for creating user '''
         while(stream_link == ""):
@@ -306,8 +306,7 @@ def stream():
             stream_ip = data["stream_ip"]
             stream_id = data["stream_id"]
             print("Added Stream " + str(stream_id))
-            ''' TODO: make schema changes in accordance to schema '''
-            streamadddict = {"Stream_ID": stream_id, "Stream_IP": stream_ip}
+            streamadddict = {"stream_id": stream_id, "stream_ip": stream_ip}
             client.publish("stream/add", json.dumps(streamadddict))
             while(addstreams == ""):
                 continue
@@ -324,7 +323,7 @@ def stream():
             '''
                 Delete a  specified stream
                 Args:
-                    dict (str): {"stream_id": "xyz", "stream_ip": "uri-format"}
+                    dict (str): {"stream_id": "xyz"}
                 Returns:
                     str: If success - 200 {}
                          If failed - 404 {}
@@ -334,7 +333,7 @@ def stream():
             stream_id = data["stream_id"]
             print("Deleted Stream " + str(stream_id))
             ''' TODO: make schema changes in accordance to schema '''
-            streamdeldict = {"Stream_ID": stream_id, "Stream_IP": stream_ip}
+            streamdeldict = {"stream_id": stream_id}
             client.publish("stream/delete", json.dumps(streamdeldict))
             while (delstreams == ""):
                 continue
@@ -360,7 +359,7 @@ def stream():
                                             ]}
                          If failed - 404 {}
             '''
-            client.publish("stream/get", "All streams")
+            client.publish("stream/get", json.dumps({}))
             while(allstreams == ""):
                 continue
             retval = allstreams
@@ -580,7 +579,7 @@ def archivestream():
             except:
                 end_time = None
             job_id = data["job_id"]
-            archivedict = {"User_IP": user_ip, "Stream_ID": stream_id, "start_date": start_date,
+            archivedict = {"User_IP": user_ip, "stream_id": stream_id, "start_date": start_date,
                            "start_time": start_time, "end_date": end_date, "end_time": end_time, "job_id": job_id}
             client.publish("archive/add", json.dumps(archivedict))
             while(addarchives == ""):
@@ -627,7 +626,7 @@ def archivestream():
             except:
                 end_time = None
             job_id = data["job"]
-            archivedict = {"User_IP": user_ip, "Stream_ID": stream_id, "start_date": start_date,
+            archivedict = {"User_IP": user_ip, "stream_id": stream_id, "start_date": start_date,
                            "start_time": start_time, "end_date": end_date, "end_time": end_time, "job_id": job_id}
             client.publish("archive/delete", json.dumps(archivedict))
             while(delarchives == ""):

@@ -88,10 +88,10 @@ class Statter():
                     if topic == "origin/ffmpeg/killall":
                         with self.dictLock:
                             self.registeredStreams = {}
-                    if topic == "lb/request/allstreams":
+                    if topic == "lb/request/origin/streams":
                         print("Initialized Streams")
-                        if (msgDict["Stream_List"]):
-                            streamList = msgDict["Stream_List"]
+                        if (msgDict["stream_list"]):
+                            streamList = msgDict["stream_list"]
                             for stream in streamList:
                                 self.addNewStream(stream["stream_id"], stream["stream_ip"])
                         self.startFlag = True
@@ -205,7 +205,7 @@ class Statter():
     def start(self):
         self.mqttc.run()
         time.sleep(0.5)
-        self.mqttc.publish("request/allstreams", json.dumps({"origin_ip": self.origin_IP}))
+        self.mqttc.publish("request/origin/streams", json.dumps({"origin_ip": self.origin_IP}))
         while(self.startFlag == False):
             time.sleep(0.5)
         ''' Start the stat thread '''
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     mqttServer = "10.156.14.138"
     mqttTopics = [("origin/ffmpeg/stream/stat/spawn", 0),
                   ("origin/ffmpeg/kill", 0),
-                  ("lb/request/allstreams", 0),
+                  ("lb/request/origin/streams", 0),
                   ("origin/ffmpeg/killall", 0)]
     statter = Statter(statPageURL, mqttServer, mqttTopics)
 

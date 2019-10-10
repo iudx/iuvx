@@ -39,7 +39,7 @@ def OriginFfmpegSpawn(origin_ffmpeg_spawn):
 
     senddict = {"cmd": " ".join(cmd), "from_ip": msg["stream_ip"], "stream_id": msg["stream_id"],
                 "to_ip": msg["origin_ip"], "rtsp_cmd": " ".join(rtsp_cmd)}
-    return {"topic": "db/origin/ffmpeg/stream/spawn", "ddict": senddict}
+    return {"topic": "db/origin/ffmpeg/stream/spawn", "msg": senddict}
     # col.insert_one(msg)
 
 
@@ -60,7 +60,6 @@ def OriginFfmpegDist(origin_ffmpeg_dist):
     senddict = {"cmd": " ".join(
         cmd), "from_ip": msg["origin_ip"], "stream_id": msg["stream_id"], "to_ip": msg["dist_ip"], "rtsp_cmd": " ".join(rtsp_cmd)}
     return {"topic": "db/origin/ffmpeg/dist/spawn", "ddict": senddict}
-    # col.insert_one(msg)
 
 
 @app.task
