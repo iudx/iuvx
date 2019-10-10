@@ -158,7 +158,7 @@ class Statter():
                 streamId = stream
                 streamIp = self.registeredStreams[stream]["stream_ip"]
                 streamDict = {"stream_ip": streamIp,
-                              "stream_id": streamId, "origin_ip": self.origin_IP}
+                              "stream_id": streamId, "origin_id": self.origin_ID}
                 print("Publishing")
                 print(streamDict)
                 self.mqttc.publish("db/origin/ffmpeg/respawn",

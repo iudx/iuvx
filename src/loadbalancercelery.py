@@ -326,11 +326,12 @@ def DistStat(msg):
 
 
 @app.task()
-def OriginFfmpegDist(msg):
+def OriginFfmpegDistPush(msg):
     '''
         Trigger: celeryLBmain.py
-        Handles: Update num_clients
-        Response: None
+        Handles: Inserts origin stream info into db upon succesful
+                 pull from camera
+        Response: HTTPServer
     '''
     msg = json.loads(msg)
     logger.info(msg)
@@ -348,6 +349,39 @@ def OriginFfmpegDist(msg):
     logger.info(str(msg["cmd"].split()[-2]))
     time.sleep(0.1)
     return {"topic": "lbsresponse/rtmp", "msg": str(msg["cmd"].split()[-2])}
+
+
+@app.task
+def OriginFfmpegRespawn(msg):
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Respawn origin stream
+        Response: HTTPServer.py
+        TODO: Respawn based on logic
+    '''
+    msg = json.loads(msg)
+    logger.info(str(msg)+" should come here only when missing becomes active")
+    return {"topic": "origin/ffmpeg/respawn", "msg": msg}
+
+
+@app.task
+def OriginFFmpegDistRespawn(msg):
+    '''
+        Trigger: celeryLBmain.py
+        Handles: Respawns origin to distribution published stream
+        Response: HTTPServer.py
+        TODO: Respawn based on logic
+    '''
+    msg = json.loads(msg)
+    logger.info("Respawning", msg["stream_id"])
+    return {"topic": "origin/ffmpeg/dist/respawn", "msg": msg}
+
+
+
+
+''' 
+    To be refactored
+'''
 
 
 @app.task
@@ -526,11 +560,6 @@ def RequestStream(reqstream):
 
 
 
-@app.task
-def OriginFfmpegRespawn(origin_ffmpeg_respawn):
-    msg = json.loads(origin_ffmpeg_respawn[1])
-    logger.info(str(msg)+" should come here only when missing becomes active")
-    return {"topic": "origin/ffmpeg/respawn", "msg": msg}
 
 
 @app.task
@@ -569,24 +598,7 @@ def ArchiveDel(archive_stream_del):
         return [{"topic": "lbsresponse/archive/del", "msg": True}, {"topic": "origin/ffmpeg/archive/delete", "msg": msg}]
 
 
-@app.task
-def OriginFFmpegDistRespawn(origin_ffmpeg_dist_respawn):
-    msg = json.loads(origin_ffmpeg_dist_respawn[1])
-    logger.info(str(msg)+" should come here only when missing becomes active")
-    msg["origin_ip"] = col3.find_one(
-        {"stream_ip": msg["stream_ip"], "stream_id": msg["stream_id"], "dist_ip": msg["dist_ip"]})["origin_ip"]
-    return {"topic": "origin/ffmpeg/dist/respawn", "msg": msg}
 
-
-
-
-@app.task
-def DistStat(msg):
-    msg = json.loads(msg)
-    for i in col2.find():
-        if msg["dist_ip"] == i["dist_ip"]:
-            col2.update({"dist_ip": msg["dist_ip"]}, {
-                        "$set": {"NClients": int(msg["NClients"])}}, upsert=True)
 
 
 @app.task

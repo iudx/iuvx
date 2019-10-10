@@ -21,16 +21,13 @@ ndist = {}
 results = []
 
 # All Flags
-origin_ffmpeg_dist = [0, ""]
 delete_dist = [0, ""]
 insert_stream = [0, ""]
 delete_stream = [0, ""]
 reqstream = [0, ""]
-origin_ffmpeg_respawn = [0, ""]
 archive_stream_add = [0, ""]
 archive_stream_del = [0, ""]
 req_all_streams = [0, ""]
-origin_ffmpeg_dist_respawn = [0, ""]
 user_add = [0, ""]
 user_del = [0, ""]
 verify_user = [0, ""]
@@ -61,38 +58,31 @@ class LB():
         elif topic == "stream/request":
             reqstream[0] = 1
             reqstream[1] = msg
-        elif topic == "db/origin/ffmpeg/dist/spawn":
-            origin_ffmpeg_dist[0] = 1
-            origin_ffmpeg_dist[1] = msg
-            # originstreams[ip]=streams
-            # print topic+" "+msg
-        elif topic == "db/origin/ffmpeg/respawn":
-            origin_ffmpeg_respawn[0] = 1
-            origin_ffmpeg_respawn[1] = msg
-        elif topic == "db/dist/ffmpeg/respawn":
-            origin_ffmpeg_dist_respawn[0] = 1
-            origin_ffmpeg_dist_respawn[1] = msg
-        elif topic == "archive/add":
-            archive_stream_add[0] = 1
-            archive_stream_add[1] = msg
-        elif topic == "archive/delete":
-            archive_stream_del[0] = 1
-            archive_stream_del[1] = msg
+        elif topic == "stream/get":
+            get_streams[0] = 1
+
         elif topic == "user/add":
             user_add[0] = 1
             user_add[1] = msg
         elif topic == "user/del":
             user_del[0] = 1
             user_del[1] = msg
+        elif topic == "user/get":
+            get_users[0] = 1
+
+
+        elif topic == "archive/add":
+            archive_stream_add[0] = 1
+            archive_stream_add[1] = msg
+        elif topic == "archive/delete":
+            archive_stream_del[0] = 1
+            archive_stream_del[1] = msg
+        elif topic == "archive/get":
+            get_archives[0] = 1
+
         elif topic == "verify/user":
             verify_user[0] = 1
             verify_user[1] = msg
-        elif topic == "stream/get":
-            get_streams[0] = 1
-        elif topic == "user/get":
-            get_users[0] = 1
-        elif topic == "archive/get":
-            get_archives[0] = 1
 
         # print topic+" "+msg
         # diststreams[ip]=streams
@@ -178,6 +168,19 @@ if __name__ == "__main__":
             res = lbc.OriginFfmpegDistPush.delay(self.msg)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
 
+        elif self.action == "db/origin/ffmpeg/respawn":
+            res = lbc.OriginFfmpegRespawn.delay(self.msg)
+            threading.Thread(target=monitorTaskResult, args=(res,)).start()
+
+        elif self.action == "db/dist/ffmpeg/respawn":
+            ''' TODO: Message should come from diststatchecker '''
+            res = lbc.OriginFFmpegDistRespawn.delay(self.msg)
+            threading.Thread(target=monitorTaskResult, args=(res,)).start()
+
+
+
+
+
 
         elif insert_stream[0]:
             res = lbc.InsertStream.delay(insert_stream)
@@ -191,14 +194,6 @@ if __name__ == "__main__":
             res = lbc.RequestStream.delay(reqstream)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
             reqstream = [0, ""]
-        elif origin_ffmpeg_dist[0]:
-            res = lbc.OriginFfmpegDist.delay(origin_ffmpeg_dist)
-            threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            origin_ffmpeg_dist = [0, ""]
-        elif origin_ffmpeg_respawn[0]:
-            res = lbc.OriginFfmpegRespawn.delay(origin_ffmpeg_respawn)
-            threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            origin_ffmpeg_respawn = [0, ""]
         elif archive_stream_add[0]:
             res = lbc.ArchiveAdd.delay(archive_stream_add)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
@@ -207,10 +202,6 @@ if __name__ == "__main__":
             res = lbc.ArchiveDel.delay(archive_stream_del)
             threading.Thread(target=monitorTaskResult, args=(res,)).start()
             archive_stream_del = [0, ""]
-        elif origin_ffmpeg_dist_respawn[0]:
-            res = lbc.OriginFFmpegDistRespawn.delay(origin_ffmpeg_dist_respawn)
-            threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            origin_ffmpeg_dist_respawn = [0, ""]
         elif user_add[0]:
             print user_add[1]
             res = lbc.AddUser.delay(user_add)
