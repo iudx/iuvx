@@ -5,20 +5,15 @@ from celery.utils.log import get_task_logger
 
 
 import json
-from MQTTPubSub import MQTTPubSub
 import pymongo
 import time
-import datetime
-import os
-import sys
 # LBS Params
 
 
 '''
     TODO:
         1. Validation at mongodb
-        2. Make streams doc dist_ip an array
-           or comprimise with redundant doc
+        2. Parameterize celery app parameters
 '''
 
 
@@ -27,18 +22,6 @@ app = Celery('loadbalancercelery', backend="redis://", broker="redis://")
 
 '''Logger '''
 logger = get_task_logger(__name__)
-
-
-''' mongo initializations '''
-mongoclient = pymongo.MongoClient('mongodb://localhost:27017/')
-mongoDB = mongoclient["ALL_Streams"]
-col2 = mongoDB["Distribution_Servers"]
-col3 = mongoDB["Streams"]
-col4 = mongoDB["Ffmpeg_Procs"]
-col5 = mongoDB["Users"]
-col6 = mongoDB["Archives"]
-
-# Update Origin, Dists and Streams
 
 
 class Table():
@@ -91,6 +74,10 @@ class Table():
     def count(self):
         return self.collection.count()
 
+
+''' mongo initializations '''
+mongoclient = pymongo.MongoClient('mongodb://localhost:27017/')
+mongoDB = mongoclient["ALL_Streams"]
 
 '''
     {origin_id: string, origin_ip: string[uri], num_clients: int}
