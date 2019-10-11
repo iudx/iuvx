@@ -142,6 +142,20 @@ def choose_dist(stream):
             bestDist = dist
     return bestDist
 
+def search_streams(origin):
+    '''
+       Find all streams (stream_ips and stream_ids) on a given origin server
+    '''
+    stream_ips = []
+    stream_ids = []
+    if streamsTable.count() != 0:
+        for i in streamsTable.findAll({"origin_ip":origin["origin_ip"]}):
+            stream_ips.append(i["stream_ip"])
+            stream_ids.append(i["stream_id"])
+        return stream_ips, stream_ids
+    else:
+        return [], []
+
 
 @app.task
 def GetOrigins():
@@ -394,22 +408,31 @@ def InsertStream(msg):
         return 0
 
     origin = choose_origin()
-    stream = streamsTable.findOne(msg)
-    if len(stream) is 0:
-        streamsTable.insertOne({"stream_ip": msg["stream_ip"],
-                                "stream_id": msg["stream_id"],
-                                "origin_ip": origin["origin_ip"],
-                                "dist_ip": ""})
-        logger.info("Added stream ", msg["stream_id"],
-                    " to ", origin["origin_id"])
-        out = {"origin_ip": origin["origin_ip"],
-               "stream_id": msg["stream_id"],
-               "stream_ip": msg["stream_ip"]}
-        return [{"topic": "lbsresponse/stream/add", "msg": True},
-                {"topic": "origin/ffmpeg/stream/spawn", "msg": out},
-                {"topic": "origin/ffmpeg/stream/stat/spawn", "msg": out}]
+
+    ''' TODO: Add 'status' to the streamsTable '''
+    stream_ips, stream_ids = search_streams(origin)
+
+    if msg["stream_ip"] not in stream_ips:
+       if msg["stream_id"] not in stream_ids:
+           streamsTable.insertOne({"stream_ip": msg["stream_ip"],
+                                   "stream_id": msg["stream_id"],
+                                   "origin_ip": origin["origin_ip"],
+                                    "dist_ip": ""})
+           logger.info("Added stream ", msg["stream_id"], "with IP ", msg["stream_ip"],
+                       " to ", origin["origin_id"])
+           out = {"origin_ip": origin["origin_ip"],
+                  "stream_id": msg["stream_id"],
+                  "stream_ip": msg["stream_ip"]}
+           return [{"topic": "lbsresponse/stream/add", "msg": True},
+                    {"topic": "origin/ffmpeg/stream/spawn", "msg": out},
+                    {"topic": "origin/ffmpeg/stream/stat/spawn", "msg": out}]
+       else:
+           logger.warning("Stream ID ", msg["stream_id"],
+                           " to ", origin["origin_id"], " already present. Choose different ID.")
+           return {"topic": "lbsresponse/stream/add", "msg": False}
+
     else:
-        logger.warning("Stream ", msg["stream_id"],
+        logger.warning("Stream IP ", msg["stream_ip"],
                        " to ", origin["origin_id"], " already present")
         return {"topic": "lbsresponse/stream/add", "msg": False}
 
