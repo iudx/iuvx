@@ -53,7 +53,7 @@ def on_message(client, userdata, message):
 		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		s.connect(("8.8.8.8", 80))
 		ddict=json.loads(msg)
-		if ddict["Origin_IP"]==str(s.getsockname()[0]):
+		if ddict["origin_ip"]==str(s.getsockname()[0]):
 			if topic=="origin/ffmpeg/stream/spawn":
 				print topic,msg
 				origin_ffmpeg_spawn[0]=1

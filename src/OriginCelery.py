@@ -22,12 +22,23 @@ FNULL = open(os.devnull, 'w')
 
 @app.task
 def OriginFfmpegSpawn(origin_ffmpeg_spawn):
+    ''' 
+      Spawns a media link between camera and origin NGINX server. "stream_ip" represents the
+      IP address for stream playback from the IP camera. 
+    '''
     logger.info("Spawn")
     msg = origin_ffmpeg_spawn[1]
-    rtsp_cmd = ["nohup", "/usr/bin/ffmpeg", "-i", "rtsp://"+str(msg["stream_ip"])+"/h264", "-an", "-vcodec", "copy", "-f", "rtsp",
+
+    #rtsp_cmd = ["nohup", "/usr/bin/ffmpeg", "-i", "rtsp://"+str(msg["stream_ip"])+"/h264", "-an", "-vcodec", "copy","-f","rtsp",
+    #         "-rtsp_transport", "tcp", "rtsp://"+str(msg["origin_ip"]).strip()+":80/dynamic/"+str(msg["stream_id"]).strip(), "&"]
+    #cmd = ["nohup", "/usr/bin/ffmpeg", "-i", "rtsp://"+str(msg["stream_ip"])+"/h264", "-an", "-vcodec", "copy", "-f", "flv", 
+    #    "rtmp://"+str(msg["origin_ip"]).strip()+":1935/dynamic/"+str(msg["stream_id"]).strip(), "&"]
+
+    # "stream_ip" is the full playback ip from the camera
+    rtsp_cmd = ["nohup", "/usr/bin/ffmpeg", "-i", str(msg["stream_ip"]), "-an", "-vcodec", "copy", "-f", "rtsp",
                 "-rtsp_transport", "tcp", "rtsp://"+str(msg["origin_ip"]).strip()+":80/dynamic/"+str(msg["stream_id"]).strip(), "&"]
-    cmd = ["nohup", "/usr/bin/ffmpeg", "-i", "rtsp://"+str(msg["stream_ip"])+"/h264", "-an", "-vcodec", "copy", "-f", "flv", "rtmp://"+str(
-        msg["origin_ip"]).strip()+":1935/dynamic/"+str(msg["stream_id"]).strip(), "&"]
+    cmd = ["nohup", "/usr/bin/ffmpeg", "-i", str(msg["stream_ip"]), "-an", "-vcodec", "copy", "-f", "flv", 
+        "rtmp://"+str(msg["origin_ip"]).strip()+":1935/dynamic/"+str(msg["stream_id"]).strip(), "&"]
     logger.info(" ".join(cmd))
     proc = sp.Popen(" ".join(cmd), stdout=FNULL, stderr=FNULL,
                     stdin=FNULL, shell=True, preexec_fn=os.setpgrp)
@@ -37,9 +48,9 @@ def OriginFfmpegSpawn(origin_ffmpeg_spawn):
     logger.info("FFMPEG spawned for " +
                 str(rtsp_cmd[3])+"----------->"+str(rtsp_cmd[-2]))
 
-    senddict = {"cmd": " ".join(cmd), "from_ip": msg["stream_ip"], "stream_id": msg["stream_id"],
+    out = {"cmd": " ".join(cmd), "from_ip": msg["stream_ip"], "stream_id": msg["stream_id"],
                 "to_ip": msg["origin_ip"], "rtsp_cmd": " ".join(rtsp_cmd)}
-    return {"topic": "db/origin/ffmpeg/stream/spawn", "msg": senddict}
+    return {"topic": "db/origin/ffmpeg/stream/spawn", "msg": out}
     # col.insert_one(msg)
 
 
