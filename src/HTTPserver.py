@@ -175,14 +175,14 @@ def userfunc():
             Args:
                 dict (str): {"username": "username", "password": "password"}
             Returns:
-                str: If success - 200 {"username": "username"}
+                str: If success - 200 {}
                      If already - present 409 empty
         '''
         data = request.get_json(force=True)
         user_name = data["username"]
         user_pass = data["password"]
         hashed_password = hashlib.sha512(user_pass).hexdigest()
-        reqdict = {"User": user_name, "Password": hashed_password}
+        reqdict = {"username": user_name, "password": hashed_password}
         ''' TODO: Remove mqtt publish for creating user '''
         client.publish("user/add", json.dumps(reqdict))
         while(addusers == ""):
@@ -190,7 +190,7 @@ def userfunc():
         retval = addusers
         addusers = ""
         if retval:
-            return Response(json.dumps({"username":  user_name}),
+            return Response(json.dumps({}),
                             status=200, mimetype="application/json")
         else:
             return Response(json.dumps({}),
@@ -579,7 +579,7 @@ def archivestream():
             except:
                 end_time = None
             job_id = data["job_id"]
-            archivedict = {"User_IP": user_ip, "stream_id": stream_id, "start_date": start_date,
+            archivedict = {"user_ip": user_ip, "stream_id": stream_id, "start_date": start_date,
                            "start_time": start_time, "end_date": end_date, "end_time": end_time, "job_id": job_id}
             client.publish("archive/add", json.dumps(archivedict))
             while(addarchives == ""):
@@ -626,17 +626,21 @@ def archivestream():
             except:
                 end_time = None
             job_id = data["job"]
-            archivedict = {"User_IP": user_ip, "stream_id": stream_id, "start_date": start_date,
-                           "start_time": start_time, "end_date": end_date, "end_time": end_time, "job_id": job_id}
+            archivedict = {"user_ip": user_ip, "stream_id": stream_id,
+                           "start_date": start_date,
+                           "start_time": start_time, "end_date": end_date,
+                           "end_time": end_time, "job_id": job_id}
             client.publish("archive/delete", json.dumps(archivedict))
             while(delarchives == ""):
                 continue
             retval = delarchives
             delarchives = ""
             if retval:
-                return Response(json.dumps({}), status=200, mimetype="application/json")
+                return Response(json.dumps({}), status=200,
+                                mimetype="application/json")
             else:
-                return Response(json.dumps({}), status=409, mimetype="application/json")
+                return Response(json.dumps({}), status=409,
+                                mimetype="application/json")
 
         elif request.method == "GET":
             ''' TODO '''

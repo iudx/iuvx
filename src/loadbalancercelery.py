@@ -66,12 +66,21 @@ class Table():
         res = self.collection.find_one(doc, {"_id": 0})
         return res
 
-    def findAll(self, doc=None):
+    def findAll(self, doc=None, args=None):
+        '''
+            Input:
+                doc - refine results
+                args - exlude keys
+        '''
+        ''' Exclude id from result '''
+        arg = {"_id": 0}
+        if args is not None:
+            arg.update(args)
         if (doc is not None):
-            res = self.collection.find(doc, {"_id": 0})
+            res = self.collection.find(doc, arg)
             return res
         else:
-            return self.collection.find({}, {"_id": 0})
+            return self.collection.find({}, arg)
 
     def delete(self, doc):
         self.collection.delete_one(doc)
@@ -108,6 +117,19 @@ streamsTable = Table(mongoDB, "streams")
     {dist_id: string, dist_ip: string[uri], num_clients: int}
 '''
 distTable = Table(mongoDB, "distTable")
+
+'''
+    {"user_ip": string, "stream_id": string,
+     "start_date": string[date],
+     "start_time": string[time], "end_date": string[date],
+     "end_time": string[time], "job_id": string}
+'''
+archivesTable = Table(mongoDB, "archivesTable")
+
+'''
+    {}
+'''
+usersTable = Table(mongoDB, "usersTable")
 
 
 def choose_origin(stream):
@@ -384,8 +406,7 @@ def InsertStream(msg):
         logger.info("No Origin Server Present")
         return 0
 
-    streams = streamsTable.findAll(msg)
-    origin = choose_origin(streams)
+    origin = choose_origin()
     stream = streamsTable.findOne(msg)
     if len(stream) is 0:
         streamsTable.insertOne({"stream_ip": msg["stream_ip"],
@@ -499,125 +520,130 @@ def GetStreams():
 @app.task
 def ArchiveAdd(msg):
     '''
-        Input: {}
+        Input: {"user_ip": string, "stream_id": string,
+                "start_date": string[date],
+                "start_time": string[time], "end_date": string[date],
+                "end_time": string[time], "job_id": string}
+
         Trigger: celeryLBmain.py
         Handles: Add an archive
         Response: HTTPServer.py
+        TODO: Archives unlike streams belong to a user
     '''
     msg = json.loads(msg)
     logger.info("Adding archive")
-    msg["stream_ip"] = col3.find_one(
-        {"stream_id": msg["stream_id"]})["stream_ip"]
-    msg["origin_ip"] = col3.find_one(
-        {"stream_id": msg["stream_id"]})["origin_ip"]
-
-    archivedstreams, archivedjobs = search_archives()
-    if msg["job_id"] not in archivedjobs:
-        col6.insert_one(
-            {"Job_ID": msg["job_id"], "stream_id": msg["stream_id"]})
-        return [{"topic": "lbsresponse/archive/add", "msg": True}, {"topic": "origin/ffmpeg/archive/add", "msg": msg}]
-        logger.info(str(msg)+" archiving this......")
+    stream = streamsTable.findone({"stream_id": msg["stream_id"]})
+    archive = archivesTable.findone({"stream_id": msg["stream_id"]})
+    if (len(stream) is 1) and (len(archive is 0)):
+        logger.info("Archiving ", msg["stream_id"])
+        archivesTable.insertOne(msg)
+        return [{"topic": "lbsresponse/archive/add", "msg": True},
+                {"topic": "origin/ffmpeg/archive/add", "msg": msg}]
     else:
         return {"topic": "lbsresponse/archive/add", "msg": False}
 
 
-'''
-    To be refactored
-'''
+@app.task
+def ArchiveDel(msg):
+    '''
+        Input: {"user_ip": string, "stream_id": string,
+                "start_date": string[date],
+                "start_time": string[time], "end_date": string[date],
+                "end_time": string[time], "job_id": string}
 
-
+        Trigger: celeryLBmain.py
+        Handles: Add an archive
+        Response: HTTPServer.py
+        TODO: Archives unlike streams belong to a user
+    '''
+    msg = json.loads(msg)
+    stream = streamsTable.findone({"stream_id": msg["stream_id"]})
+    archive = archivesTable.findone({"stream_id": msg["stream_id"]})
+    if (len(stream) is not 0) and (len(archive) is not 0):
+        logger.info("Deleting archive for", msg["stream_id"])
+        archivesTable.delete(stream["stream_id"])
+        return [{"topic": "lbsresponse/archive/del", "msg": True},
+                {"topic": "origin/ffmpeg/archive/delete", "msg": msg}]
+    else:
+        logger.info("Archive for ", msg["stream_id"], " not present")
+        return {"topic": "lbsresponse/archive/del", "msg": False}
 
 
 @app.task
 def GetArchives():
-    msg = {}
-    streamarch, jobarch = search_archives()
-    for i in range(len(streamarch)):
-        msg[streamarch[i]] = jobarch[i]
-    return {"topic": "lbsresponse/archive/all", "msg": msg}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-@app.task
-def ArchiveDel(archive_stream_del):
-    msg = json.loads(archive_stream_del[1])
-    logger.info(msg)
-    msg["stream_ip"] = col3.find_one(
-        {"stream_id": msg["stream_id"]})["stream_ip"]
-    msg["origin_ip"] = col3.find_one(
-        {"stream_id": msg["stream_id"]})["origin_ip"]
-    archivedstreams, archivedjobs = search_archives()
-    if msg["job_id"] not in archivedjobs:
-        return {"topic": "lbsresponse/archive/del", "msg": False}
-    else:
-        logger.info(str(msg)+"  deleting this archive......")
-        col6.delete_one({"Job_ID": msg["job_id"]})
-        return [{"topic": "lbsresponse/archive/del", "msg": True}, {"topic": "origin/ffmpeg/archive/delete", "msg": msg}]
+    '''
+        Input: {}
+        Trigger: celeryLBmain.py
+        Handles: Show all archives
+        Response: HTTPServer.py
+        TODO: Archives unlike streams belong to a user
+    '''
+    resp = archivesTable.findAll()
+    return {"topic": "lbsresponse/archive/all", "msg": resp}
 
 
 @app.task
 def GetUsers():
-    usernames = search_users()
-    return {"topic": "lbsresponse/user/all", "msg": usernames}
-
+    '''
+        Input: {}
+        Trigger: celeryLBmain.py
+        Handles: Show all users of the server
+        Response: HTTPServer.py
+    '''
+    users = usersTable.findAll(args={"password": 0})
+    return {"topic": "lbsresponse/user/all", "msg": users}
 
 
 @app.task
-def AddUser(user_add):
-    msg = json.loads(user_add[1])
-    if col5.count() == 0:
-        col5.insert_one({"User": msg["User"], "Password": msg["Password"]})
+def AddUser(msg):
+    '''
+        Input: {"username": string, "password": string}
+        Trigger: celeryLBmain.py
+        Handles: Add user to the server
+        Response: HTTPServer.py
+    '''
+    msg = json.loads(msg)
+    user = usersTable.findOne({"username": msg["username"]})
+    if len(user) is 0:
+        logger.info("Added user", msg["username"])
+        usersTable.insertOne(msg)
         return {"topic": "lbsresponse/user/add", "msg": True}
     else:
-        usernames = search_users()
-        if msg["User"] not in usernames:
-            col5.insert_one({"User": msg["User"], "Password": msg["Password"]})
-            return {"topic": "lbsresponse/user/add", "msg": True}
-        else:
-            return {"topic": "lbsresponse/user/add", "msg": False}
+        return {"topic": "lbsresponse/user/add", "msg": False}
 
 
 @app.task
-def DelUser(user_del):
-    msg = json.loads(user_del[1])
-    if col5.count() == 0:
-        return{"topic": "lbsresponse/user/del", "msg": False}
+def DelUser(msg):
+    '''
+        Input: {"username": string, "password": string}
+        Trigger: celeryLBmain.py
+        Handles: Delete user to the server
+        Response: HTTPServer.py
+    '''
+    msg = json.loads(msg)
+    user = usersTable.findOne({"username": msg["username"]})
+    if (len(user) is not 1):
+        logger.info("User ", msg["username"], " not present")
+        return {"topic": "lbsresponse/user/del", "msg": False}
     else:
-        usernames = search_users()
-        if msg["User"] not in usernames:
-            return{"topic": "lbsresponse/user/del", "msg": False}
-        else:
-            count = 0
-            for i in col5.find():
-                if i["User"] == msg["User"]:
-                    if i["Password"] == msg["Password"]:
-                        col5.delete_one({"User": msg["User"]})
-                        return {"topic": "lbsresponse/user/del", "msg": True}
-                    else:
-                        return {"topic": "lbsresponse/user/del", "msg": False}
+        if msg["password"] is not user["password"]:
+            return {"topic": "lbsresponse/user/del", "msg": False}
+        usersTable.delete(msg)
+        return {"topic": "lbsresponse/user/del", "msg": True}
 
 
 @app.task
-def VerifyUser(verify_user):
-    print("Verifying ")
-    print(verify_user)
-    msg = json.loads(verify_user[1])
-    if col5.count != 0:
-        for i in col5.find():
-            if i["User"] == msg["User"]:
-                if i["Password"] == msg["Password"]:
-                    return {"topic": "lbsresponse/verified", "msg": True}
-    return {"topic": "lbsresponse/verified", "msg": False}
+def VerifyUser(msg):
+    '''
+        Input: {"username": string, "password": string}
+        Trigger: celeryLBmain.py
+        Handles: Verify if user is valid
+        Response: HTTPServer.py
+    '''
+    msg = json.loads(msg)
+    logger.info("Verifying ", msg["username"])
+    user = usersTable.findOne({"username": msg["username"]})
+    if msg["password"] is not user["password"]:
+        return {"topic": "lbsresponse/verified", "msg": False}
+    return {"topic": "lbsresponse/verified", "msg": True}
+
