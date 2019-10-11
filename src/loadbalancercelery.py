@@ -232,12 +232,17 @@ def UpdateOriginStream(msg):
         Handles: adding ffmpeg stream to db once
                  it's added at the origin server
     '''
+    '''
+       TODO: 'status' field needs to be added in the ffmpegProcsTable row
+             The status will indicate if the ffmpeg process is alive or not alive
+    '''
     msg = json.loads(msg)
     logger.info(str(msg["stream_id"]) +
                 " stream has been started to origin " + str(msg["to_ip"]))
     ffmpegProcsTable.insertOne(msg)
-    streamsTable.update({"stream_id": msg["stream_id"]},
-                        {"$set": {"origin_ip": msg["to_ip"]}})
+    #[Ab]: Removing the update from here. Already updated it in InsertStream
+    #streamsTable.update({"stream_id": msg["stream_id"]},
+    #                    {"$set": {"origin_ip": msg["to_ip"]}})
     time.sleep(0.1)
     return 0
 
