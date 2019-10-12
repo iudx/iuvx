@@ -168,6 +168,7 @@ class Statter():
     def logger(self):
         ''' Replace with publisher here '''
         while(True):
+            ''' TODO: Send status on a per stream basis here '''
             self.mqttc.publish("origin/stat",json.dumps({"origin_id":self.origin_ID,"num_clients":str(self.numClients)}))
             epochTime = int(time.time()) * 1000000000
             self.logDataFlag = False

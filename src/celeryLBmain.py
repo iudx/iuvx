@@ -6,9 +6,15 @@ from MQTTPubSub import MQTTPubSub
 import json
 import threading
 
+'''
+    TODO:
+        1. Check msg origin_id to perform action here
+'''
+
 
 class LB():
     ''' Load Balancer Router Class '''
+
     def __init__(self, mqtt_ip, mqtt_port):
         ''' Init the router '''
         self.action = "idle"
@@ -59,8 +65,8 @@ class LB():
                             (retDict["topic"] is
                                 "dist/ffmpeg/stream/stat/spawn")):
                             time.sleep(30)
-                        self.client.publish(retDict["topic"],
-                                            json.dumps(retDict["msg"]))
+                            self.client.publish(retDict["topic"],
+                                                json.dumps(retDict["msg"]))
                         time.sleep(0.1)
                 break
 

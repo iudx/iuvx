@@ -1,19 +1,18 @@
 from __future__ import absolute_import
 from celery import Celery
-# celery
 from celery.utils.log import get_task_logger
-
-
 import json
 import pymongo
 import time
-# LBS Params
 
 
 '''
+    loadbalancercelery.py
+    Contains all the loadbalancing and bookeeping tasks
     TODO:
         1. Validation at mongodb
         2. Parameterize celery app parameters
+        3. Return json everywhere
 '''
 
 
@@ -77,7 +76,7 @@ class Table():
 
 ''' mongo initializations '''
 mongoclient = pymongo.MongoClient('mongodb://localhost:27017/')
-mongoDB = mongoclient["ALL_Streams"]
+mongoDB = mongoclient["vid-iot"]
 
 '''
     {origin_id: string, origin_ip: string[uri], num_clients: int}
@@ -92,7 +91,7 @@ originTable = Table(mongoDB, "originTable")
 ffmpegProcsTable = Table(mongoDB, "ffmpegProcsTable")
 
 '''
-    {stream_id: string, stream_ip: string[uri], 
+    {stream_id: string, stream_ip: string[uri],
      origin_ip: string[uri], dist_ip: string[uri]
      status: enum[onboadrding, deleting, active, down]
      }
@@ -119,42 +118,7 @@ archivesTable = Table(mongoDB, "archivesTable")
 usersTable = Table(mongoDB, "usersTable")
 
 
-def choose_origin(stream):
-    ''' Algorithm to choose origin server on which to onboard a stream '''
-    ''' TODO: Use some info of stream '''
-    origins = originTable.findAll()
-    bestOrigin = {}
-    bestNumClients = 100
-    for origin in origins:
-        if (origin["num_clients"] < bestNumClients):
-            bestOrigin = origin
-    return bestOrigin
-
-
-def choose_dist(stream):
-    ''' Algorithm to choose dist server on which to publish a stream '''
-    ''' TODO: Use some info of stream '''
-    dists = distTable.findAll()
-    bestDist = {}
-    bestNumClients = 100
-    for dist in dists:
-        if (dist["num_clients"] < bestNumClients):
-            bestDist = dist
-    return bestDist
-
-def search_streams(origin):
-    '''
-       Find all streams (stream_ips and stream_ids) on a given origin server
-    '''
-    stream_ips = []
-    stream_ids = []
-    if streamsTable.count() != 0:
-        for i in streamsTable.findAll({"origin_ip":origin["origin_ip"]}):
-            stream_ips.append(i["stream_ip"])
-            stream_ids.append(i["stream_id"])
-        return stream_ips, stream_ids
-    else:
-        return [], []
+''' TASKS '''
 
 
 @app.task
@@ -234,15 +198,13 @@ def UpdateOriginStream(msg):
     '''
     '''
        TODO: 'status' field needs to be added in the ffmpegProcsTable row
-             The status will indicate if the ffmpeg process is alive or not alive
+              status will indicate if the ffmpeg process is alive or not alive
+              Check with pid from OriginFfmpegSpawn
     '''
     msg = json.loads(msg)
     logger.info(str(msg["stream_id"]) +
                 " stream has been started to origin " + str(msg["to_ip"]))
     ffmpegProcsTable.insertOne(msg)
-    #[Ab]: Removing the update from here. Already updated it in InsertStream
-    #streamsTable.update({"stream_id": msg["stream_id"]},
-    #                    {"$set": {"origin_ip": msg["to_ip"]}})
     time.sleep(0.1)
     return 0
 
@@ -341,7 +303,7 @@ def DistStat(msg):
                      {"num_clients": msg["num_clients"]})
 
 
-@app.task()
+@app.task
 def OriginFfmpegDistPush(msg):
     '''
         Input: {stream_id: string, cmd: string, rtsp_cmd: string,
@@ -378,6 +340,7 @@ def OriginFfmpegRespawn(msg):
         Handles: Respawn origin stream
         Response: HTTPServer.py
         TODO: Respawn based on logic
+        TODO: Use OriginFfmpegSpawn instead
     '''
     msg = json.loads(msg)
     logger.info(str(msg)+" should come here only when missing becomes active")
@@ -404,7 +367,7 @@ def InsertStream(msg):
         Input: {stream_id: string, stream_ip: string}
         Trigger: celeryLBmain.py
         Handles: add a stream to origin server
-        Response: HTTPServer.py
+        Response: HTTPServer.py, celeryLBmain.py
     '''
     msg = json.loads(msg)
 
@@ -412,30 +375,45 @@ def InsertStream(msg):
         logger.info("No Origin Server Present")
         return 0
 
-    origin = choose_origin()
+    ''' Load balancer logic '''
+    origins = originTable.findAll()
+    bestOrigin = {}
+    bestNumClients = 100
+    for origin in origins:
+        if (origin["num_clients"] < bestNumClients):
+            bestOrigin = origin
+    origin = bestOrigin
 
     ''' TODO: Add 'status' to the streamsTable '''
-    stream_ips, stream_ids = search_streams(origin)
+    stream_ips = []
+    stream_ids = []
+    if streamsTable.count() != 0:
+        for stream in streamsTable.findAll({"origin_ip": origin["origin_ip"]}):
+            stream_ips.append(stream["stream_ip"])
+            stream_ids.append(stream["stream_id"])
 
     if msg["stream_ip"] not in stream_ips:
-       if msg["stream_id"] not in stream_ids:
-           streamsTable.insertOne({"stream_ip": msg["stream_ip"],
-                                   "stream_id": msg["stream_id"],
-                                   "origin_ip": origin["origin_ip"],
+        if msg["stream_id"] not in stream_ids:
+            streamsTable.insertOne({"stream_ip": msg["stream_ip"],
+                                    "stream_id": msg["stream_id"],
+                                    "origin_ip": origin["origin_ip"],
+                                    "origin_id": origin["origin_id"],
                                     "dist_ip": ""})
-           logger.info("Added stream ", msg["stream_id"], "with IP ", msg["stream_ip"],
-                       " to ", origin["origin_id"])
-           out = {"origin_ip": origin["origin_ip"],
-                  "stream_id": msg["stream_id"],
-                  "stream_ip": msg["stream_ip"]}
-           return [{"topic": "lbsresponse/stream/add", "msg": True},
+            logger.info("Added stream ", msg["stream_id"],
+                        "with IP ", msg["stream_ip"],
+                        " to ", origin["origin_id"])
+            out = {"origin_ip": origin["origin_ip"],
+                   "origin_id": origin["origin_id"],
+                   "stream_id": msg["stream_id"],
+                   "stream_ip": msg["stream_ip"]}
+            return [{"topic": "lbsresponse/stream/add", "msg": True},
                     {"topic": "origin/ffmpeg/stream/spawn", "msg": out},
                     {"topic": "origin/ffmpeg/stream/stat/spawn", "msg": out}]
-       else:
-           logger.warning("Stream ID ", msg["stream_id"],
-                           " to ", origin["origin_id"], " already present. Choose different ID.")
-           return {"topic": "lbsresponse/stream/add", "msg": False}
-
+        else:
+            logger.warning("Stream ID ", msg["stream_id"],
+                           " to ", origin["origin_id"],
+                           " already present.  Choose different ID.")
+            return {"topic": "lbsresponse/stream/add", "msg": False}
     else:
         logger.warning("Stream IP ", msg["stream_ip"],
                        " to ", origin["origin_id"], " already present")
@@ -472,6 +450,7 @@ def RequestStream(msg):
         Trigger: celeryLBmain.py
         Handles: Gives the user a stream from the distribution server
         Response: HTTPServer.py
+        TODO: Spawn stream irrespective of user asking for it
     '''
     msg = json.loads(msg)
 
@@ -492,10 +471,17 @@ def RequestStream(msg):
     if (len(stream) is not 0) and (len(ffproc) is 0):
         ''' Stream registered but dist ffmpeg processes missing '''
 
-        dist = choose_dist(stream)
-        resp = {"origin_id": stream["origin_id"], "dist_id": dist["dist_id"],
-                "stream_id": stream["stream_id"],
-                "stream_ip": stream["stream_ip"]}
+        ''' Load balancer logic '''
+        dists = distTable.findAll()
+        bestDist = {}
+        bestNumClients = 100
+        for dist in dists:
+            if (dist["num_clients"] < bestNumClients):
+                bestDist = dist
+        dist = bestDist
+        resp = {"origin_id": stream["origin_id"], "origin_ip": stream["origin_ip"],
+                "dist_id": dist["dist_id"], "dist_ip": dist["dist_ip"]<
+                "stream_id": stream["stream_id"], "stream_ip": stream["stream_ip"]}
         userresp = {"stream_id": stream["stream_id"], "rtmp": ffproc["cmd"],
                     "hls": "http://" + ffproc["to_ip"] +
                            ":8080/hls/" + stream["stream_id"] + ".m3u8",
@@ -661,4 +647,3 @@ def VerifyUser(msg):
     if msg["password"] is not user["password"]:
         return {"topic": "lbsresponse/verified", "msg": False}
     return {"topic": "lbsresponse/verified", "msg": True}
-

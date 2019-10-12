@@ -1,9 +1,4 @@
-import paho.mqtt.client as mqtt
 import socket
-import psutil
-import signal
-import os
-import subprocess as sp
 import time
 import json
 from MQTTPubSub import MQTTPubSub
@@ -22,18 +17,18 @@ def on_message(client, userdata, message):
     topic = str(message.topic.decode("utf-8"))
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
-    ddict = json.loads(msg)
-    print(ddict, topic)
-    if isinstance(ddict, list):
-        for i in ddict:
+    msg = json.loads(msg)
+    print(msg, topic)
+    if isinstance(msg, list):
+        for i in msg:
             if str(i["origin_ip"]) == str(s.getsockname()[0]):
                 print(topic)
                 if topic == "origin/ffmpeg/kill":
                     origin_ffmpeg_kill[0] = 1
-                    origin_ffmpeg_kill[1] = ddict
+                    origin_ffmpeg_kill[1] = msg
             break
-    elif isinstance(ddict, dict):
-        if ddict["origin_ip"] == str(s.getsockname()[0]):
+    elif isinstance(msg, dict):
+        if msg["origin_ip"] == str(s.getsockname()[0]):
             if topic == "origin/ffmpeg/killall":
                 origin_ffmpeg_killall[0] = 1
     else:
@@ -49,11 +44,11 @@ def monitorTaskResult(res):
             if retval:
                 if isinstance(retval, dict):
                     client.publish(retval["topic"],
-                                   json.dumps(retval["ddict"]))
+                                   json.dumps(retval["msg"]))
                     time.sleep(0.1)
                 elif isinstance(retval, list):
                     for i in retval.keys():
-                        client.publish(i["topic"], json.dumps(i["ddict"]))
+                        client.publish(i["topic"], json.dumps(i["msg"]))
                         time.sleep(30)
             break
 
