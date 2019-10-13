@@ -16,17 +16,14 @@ import os
 import sys
 
 
-'''
-    TODO: Origin_ID environment variable
-'''
-
 class Statter():
     """Statter Class to check status of NGINX based FFMPEG streams"""
 
-    def __init__(self, statPageURL, mqttServer, mqttTopics):
+    def __init__(self, tsDBParams, statPageURL, mqttServer, mqttTopics):
         """ Internal Defs"""
         self.statPageURL = statPageURL
-        self.registeredStreams = {}
+        ''' Registered Streams '''
+        self.rS = {}
         self.missingsQ = Queue.Queue()
         self.startFlag = False
         self.waitPeriod = 30
@@ -48,26 +45,25 @@ class Statter():
         self.mqttServerParams["topic"] = mqttTopics
         self.mqttServerParams["onMessage"] = self.on_message
         self.mqttc = MQTTPubSub(self.mqttServerParams)
-        self.numClients=0
+        self.numClients = 0
         ''' InfluxDB '''
-        tsDBUrl = "127.0.0.1"
-        tsDBPort = 8086
-        tsDBUname = "root"
-        tsDBPwd = "root"
-        appName = "Statter"
         self.influxClient = InfluxDBClient(
-            tsDBUrl, tsDBPort, tsDBUname, tsDBPwd, appName)
+            tsDBParams["url"], tsDBParams["port"],
+            tsDBParams["uname"], tsDBParams["pwd"], tsDBParams["appName"])
 
     def addNewStream(self, stream_id, stream_ip):
         with self.dictLock:
             print("Adding Stream \t" + str(stream_id))
-            self.registeredStreams[stream_id] = {"stream_ip": stream_ip,
-                "Status": 1,"Revived":0, "Timer":None, "InBW":0}
+            self.rS[stream_id] = {"stream_ip": stream_ip,
+                                  "status": 1,
+                                  "revived": 0,
+                                  "Timer": None,
+                                  "InBW": 0}
 
     def deleteStream(self, streamId):
         with self.dictLock:
-            print ("Removing Stream \t"+str(streamId))
-            del self.registeredStreams[streamId]
+            print("Removing Stream \t" + str(streamId))
+            del self.rS[streamId]
 
     def on_message(self, client, userdata, message):
         msg = str(message.payload.decode("utf-8"))
@@ -75,25 +71,26 @@ class Statter():
         msgDict = json.loads(msg)
         print(msgDict)
         try:
-            if isinstance(msgDict,list):
-                    for i in msgDict:
-                        if i["origin_ip"] == self.origin_IP:
-                            if topic == "origin/ffmpeg/kill":
-                                self.deleteStream(i["stream_id"])
-            else:         
+            if isinstance(msgDict, list):
+                for stream in msgDict:
+                    if stream["origin_ip"] == self.origin_IP:
+                        if topic == "origin/ffmpeg/kill":
+                            self.deleteStream(stream["stream_id"])
+            else:
                 if msgDict["origin_ip"] == self.origin_IP:
                     if topic == "origin/ffmpeg/stream/stat/spawn":
-                        self.addNewStream(
-                        msgDict["stream_id"], msgDict["stream_ip"])
+                        self.addNewStream(msgDict["stream_id"],
+                                          msgDict["stream_ip"])
                     if topic == "origin/ffmpeg/killall":
                         with self.dictLock:
-                            self.registeredStreams = {}
+                            self.rS = {}
                     if topic == "lb/request/origin/streams":
                         print("Initialized Streams")
                         if (msgDict["stream_list"]):
                             streamList = msgDict["stream_list"]
                             for stream in streamList:
-                                self.addNewStream(stream["stream_id"], stream["stream_ip"])
+                                self.addNewStream(stream["stream_id"],
+                                                  stream["stream_ip"])
                         self.startFlag = True
         except Exception as e:
             print(e)
@@ -104,10 +101,11 @@ class Statter():
             stats = xd.parse(req.content)
             statList = []
             try:
-                self.numClients= stats["rtmp"]["server"]["application"][1]["live"]["nclients"]
-                stats = stats["rtmp"]["server"]["application"][1]["live"]["stream"]
+                self.numClients = (stats["rtmp"]["server"]["application"][1]
+                                        ["live"]["nclients"])
+                stats = (stats["rtmp"]["server"]["application"][1]
+                              ["live"]["stream"])
             except Exception as e:
-		print(100)
                 print(e)
 
             if isinstance(stats, collections.OrderedDict):
@@ -118,45 +116,46 @@ class Statter():
             try:
                 with self.dictLock:
                     ''' Clear status '''
-                    for stream in self.registeredStreams:
-                        self.registeredStreams[stream]["Status"] = 0
+                    for stream in self.rS:
+                        self.rS[stream]["status"] = 0
                     ''' Update status '''
                     for stat in statList:
-                        if stat["name"] in self.registeredStreams:
-                            self.registeredStreams[stat["name"]]["InBW"] = int(stat["bw_in"])
-                            self.registeredStreams[stat["name"]]["Status"] = 1
+                        if stat["name"] in self.rS:
+                            self.rS[stat["name"]]["InBW"] = int(stat["bw_in"])
+                            self.rS[stat["name"]]["status"] = 1
             except Exception as e:
                 print(e)
             time.sleep(0.5)
 
-    def resetRevived(self, streamId):
+    def resetrevived(self, streamId):
         with self.dictLock:
             try:
-                self.registeredStreams[streamId]["Revived"] = 0
+                self.rS[streamId]["revived"] = 0
             except Exception as e:
-                print e
-
+                print(e)
 
     def checkStat(self):
         while(True):
             with self.dictLock:
-                for stream in self.registeredStreams:
-                    if (self.registeredStreams[stream]["Status"] == 0) and (self.registeredStreams[stream]["Revived"] == 0):
-                        self.registeredStreams[stream]["Revived"] = 1
+                for stream in self.rS:
+                    if (self.rS[stream]["status"] == 0 and
+                            self.rS[stream]["revived"] == 0):
+                        self.rS[stream]["revived"] = 1
                         self.missingsQ.put(stream)
-                        self.registeredStreams[stream]["Timer"] = threading.Timer(self.waitPeriod,
-                                                                          self.resetRevived, args=[stream])
-                        self.registeredStreams[stream]["Timer"].start()
+                        self.rS[stream]["Timer"] = threading.Timer(self.waitPeriod,
+                                                                   self.resetrevived,
+                                                                   args=[stream])
+                        self.rS[stream]["Timer"].start()
             time.sleep(1)
 
     def pub(self):
         while(True):
-            if(self.missingsQ.empty() != True):
+            if(self.missingsQ.empty() is not True):
                 stream = self.missingsQ.get()
                 print("Missing")
-                print(self.registeredStreams[stream])
+                print(self.rS[stream])
                 streamId = stream
-                streamIp = self.registeredStreams[stream]["stream_ip"]
+                streamIp = self.rS[stream]["stream_ip"]
                 streamDict = {"stream_ip": streamIp,
                               "stream_id": streamId, "origin_id": self.origin_ID}
                 print("Publishing")
@@ -169,18 +168,20 @@ class Statter():
         ''' Replace with publisher here '''
         while(True):
             ''' TODO: Send status on a per stream basis here '''
-            self.mqttc.publish("origin/stat",json.dumps({"origin_id":self.origin_ID,"num_clients":str(self.numClients)}))
+            self.mqttc.publish("origin/stat",
+                               json.dumps({"origin_id": self.origin_ID,
+                                           "num_clients": str(self.numClients)}))
             epochTime = int(time.time()) * 1000000000
             self.logDataFlag = False
             with self.dictLock:
-                for stream in self.registeredStreams:
+                for stream in self.rS:
                     series = []
-                    ''' Status '''
+                    ''' status '''
                     pointValues = {
                         "time": epochTime,
-                        "measurement": "Status",
+                        "measurement": "status",
                         'fields': {
-                            'value': self.registeredStreams[stream]["Status"],
+                            'value': self.rS[stream]["status"],
                         },
                         'tags': {
                             "streamId": stream
@@ -192,7 +193,7 @@ class Statter():
                         "time": epochTime,
                         "measurement": "Bandwidth",
                         'fields': {
-                            'value': self.registeredStreams[stream]["InBW"],
+                            'value': self.rS[stream]["InBW"],
                         },
                         'tags': {
                             "streamId": stream
@@ -207,7 +208,7 @@ class Statter():
         self.mqttc.run()
         time.sleep(0.5)
         self.mqttc.publish("request/origin/streams", json.dumps({"origin_ip": self.origin_IP}))
-        while(self.startFlag == False):
+        while(self.startFlag is False):
             time.sleep(0.5)
         ''' Start the stat thread '''
         self.statThread = threading.Thread(target=self.stat)
@@ -228,26 +229,26 @@ class Statter():
 
         while(True):
             try:
-		with self.dictLock:
-			if (self.registeredStreams):
-			    for stream in self.registeredStreams:
-				obj = self.registeredStreams[stream]
+                with self.dictLock:
+                    if (self.rS):
+                        for stream in self.rS:
+                            ''' For printing '''
+                            obj = self.rS[stream]
             except Exception as e:
                 print(e)
             time.sleep(2)
 
 
 if __name__ == "__main__":
-    # mongoclient=pymongo.MongoClient('mongodb://localhost:27017/')
-    # mydb=mongoclient["Origin_Streams"]
-    # col1=mydb["Streams"]
     statPageURL = "http://localhost:8080/stat"
     mqttServer = "10.156.14.138"
     mqttTopics = [("origin/ffmpeg/stream/stat/spawn", 0),
                   ("origin/ffmpeg/kill", 0),
                   ("lb/request/origin/streams", 0),
                   ("origin/ffmpeg/killall", 0)]
-    statter = Statter(statPageURL, mqttServer, mqttTopics)
+    tsDBParams = {"url": "127.0.0.1", "port": 8086,
+                  "uname": "root", "pwd": "root", "app": "statter"}
+    statter = Statter(tsDBParams, statPageURL, mqttServer, mqttTopics)
 
     statter.start()
 

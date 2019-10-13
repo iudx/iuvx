@@ -1,79 +1,80 @@
-import socket
+import os
+import sys
 import time
 import json
 from MQTTPubSub import MQTTPubSub
 import OriginCelery as oc
 import threading
 
-origin_ffmpeg_kill = [0, ""]
-origin_ffmpeg_killall = [0, ""]
 
+class OriginKiller():
+    def __init__(self, origin_id, mqtt_ip, mqtt_port):
+        ''' Init the router '''
+        self.origin_id = origin_id
+        self.action = "idle"
+        self.msg = ""
+        self.mqParams = {}
+        self.mqParams["url"] = mqtt_ip
+        self.mqParams["port"] = mqtt_port
+        self.mqParams["timeout"] = 60
+        self.mqParams["topic"] = [("origin/ffmpeg/kill", 0),
+                                  ("origin/ffmpeg/killall", 0)]
+        self.mqParams["onMessage"] = self.on_message
+        self.client = MQTTPubSub(self.mqParams)
 
-''' TODO: Beautify later '''
+    def router(self):
+        while(True):
+            if self.action == "origin/ffmpeg/kill":
+                res = oc.OriginFfmpegKill.delay(self.msg)
+                threading.Thread(target=self.monitorTaskResult,
+                                 args=(res,)).start()
 
+            if self.action == "origin/ffmpeg/killall":
+                res = oc.OriginFfmpegKillAll.delay(self.msg)
+                threading.Thread(target=self.monitorTaskResult,
+                                 args=(res,)).start()
 
-def on_message(client, userdata, message):
-    msg = str(message.payload.decode("utf-8"))
-    topic = str(message.topic.decode("utf-8"))
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    msg = json.loads(msg)
-    print(msg, topic)
-    if isinstance(msg, list):
-        for i in msg:
-            if str(i["origin_ip"]) == str(s.getsockname()[0]):
-                print(topic)
-                if topic == "origin/ffmpeg/kill":
-                    origin_ffmpeg_kill[0] = 1
-                    origin_ffmpeg_kill[1] = msg
-            break
-    elif isinstance(msg, dict):
-        if msg["origin_ip"] == str(s.getsockname()[0]):
-            if topic == "origin/ffmpeg/killall":
-                origin_ffmpeg_killall[0] = 1
-    else:
-        pass
-    s.close()
+            else:
+                self.action = "idle"
+                self.msg = ""
+                continue
+            time.sleep(0.001)
 
+    def on_message(self, client, userdata, message):
+        ''' MQTT Callback function '''
+        self.msg = message.payload.decode("utf-8")
+        self.msg = json.loads(self.msg)
+        if self.msg["origin_id"] == self.origin_id:
+            self.action = message.topic.decode("utf-8")
 
-def monitorTaskResult(res):
-    global client
-    while(True):
-        if res.ready():
-            retval = res.get()
-            if retval:
-                if isinstance(retval, dict):
-                    client.publish(retval["topic"],
-                                   json.dumps(retval["msg"]))
+    def monitorTaskResult(self, res):
+        ''' Celery task monitor '''
+        while(True):
+            if res.ready():
+                ret = res.get()
+                if not ret:
+                    pass
+                elif isinstance(ret, dict):
+                    self.client.publish(ret["topic"],
+                                        json.dumps(ret["msg"]))
                     time.sleep(0.1)
-                elif isinstance(retval, list):
-                    for i in retval.keys():
-                        client.publish(i["topic"], json.dumps(i["msg"]))
+                elif isinstance(ret, list):
+                    for retDict in ret:
+                        self.client.publish(retDict["topic"], retDict["msg"])
                         time.sleep(30)
-            break
+                break
 
 
-# MQTT Params
-mqttServerParams = {}
-mqttServerParams["url"] = "10.156.14.138"
-mqttServerParams["port"] = 1883
-mqttServerParams["timeout"] = 60
-mqttServerParams["topic"] = [
-    ("origin/ffmpeg/kill", 0), ("origin/ffmpeg/killall", 0)]
-mqttServerParams["onMessage"] = on_message
-client = MQTTPubSub(mqttServerParams)
+def main():
+    mqtt_ip = os.environ["LB_IP"]
+    mqtt_port = os.environ["LB_PORT"]
+    if mqtt_ip is None or mqtt_port is None:
+        print("Error! LB_IP and LB_PORT not set")
+        sys.exit(0)
+    origin_id = os.environ["ORIGIN_ID"]
+    originKiller = OriginKiller(origin_id, mqtt_ip, mqtt_port)
+    originKiller.router()
+
 
 if __name__ == "__main__":
-    client.run()
-    print("Started")
-    while(True):
-        if origin_ffmpeg_kill[0] == 1:
-            res = oc.OriginFfmpegKill.delay(origin_ffmpeg_kill)
-            threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            origin_ffmpeg_kill = [0, ""]
-        elif origin_ffmpeg_killall[0] == 1:
-            res = oc.OriginFfmpegKillAll.delay(origin_ffmpeg_killall)
-            threading.Thread(target=monitorTaskResult, args=(res,)).start()
-            origin_ffmpeg_killall = [0, ""]
-        else:
-            continue
+    main()

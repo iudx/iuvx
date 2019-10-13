@@ -49,9 +49,9 @@ class Origin():
 
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
-        msg = message.payload.decode("utf-8")
-        msg = json.loads(msg)
-        if msg["origin_id"] == self.origin_id:
+        self.msg = message.payload.decode("utf-8")
+        self.msg = json.loads(self.msg)
+        if self.msg["origin_id"] == self.origin_id:
             self.action = message.topic.decode("utf-8")
 
     def monitorTaskResult(self, res):

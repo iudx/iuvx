@@ -152,11 +152,10 @@ def OriginFfmpegKillAll():
 def OriginFfmpegArchive(msg, length):
     '''
         Input: [{cmd: string, rtsp_cmd: string}]
-        Trigger: originffmpegspawner.py
-        Handles: Kills all streams
+        Trigger: originffmpegarchiver.py
+        Handles: Archive db info
     '''
-    logger.info(msg)
-    logger.info(length)
+    logger.info("Archiving ", msg["stream_id"])
     cmd = ["nohup", "/usr/bin/ffmpeg", "-i",
            "rtmp://" + str(msg["origin_ip"]).strip() +
            ":1935/ dynamic/" + str(msg["stream_id"]).strip(),
@@ -171,4 +170,3 @@ def OriginFfmpegArchive(msg, length):
     logger.info(" ".join(cmd))
     sp.Popen(" ".join(cmd), stdout=FNULL, stderr=FNULL,
              stdin=FNULL, shell=True, preexec_fn=os.setpgrp)
-    logger.info("FFMPEG spawned for "+str(cmd[3])+"----------->"+str(cmd[-2]))
