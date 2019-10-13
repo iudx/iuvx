@@ -29,6 +29,7 @@ logger = logging.getLogger("werkzeug")
 ''' Environment Variables '''
 LB_IP = os.environ["LB_IP"]
 LB_PORT = os.environ["LB_PORT"]
+MQTT_PORT = os.environ["MQTT_PORT"]
 if LB_IP is None or LB_PORT is None:
     print("Error! LB_IP and LB_PORT not set")
     sys.exit(0)
@@ -65,14 +66,16 @@ def on_message(client, userdata, message):
         TODO: make all messages json
         TODO: Add time out
     '''
+    global msg, action
     global addusers, delusers, verified, allusers
     global allorigins, addorigin, delorigin, alldists
     global adddists, deldists, addstreams, allstreams
     global delstreams, allarchives, addarchives, delarchives
     global stream_link
     msg = message.payload.decode("utf-8")
-    print(msg)
     topic = message.topic.decode("utf-8")
+    print(msg)
+    print(topic)
     if topic == "lbsresponse/rtmp":
         stream_link = msg
     if topic == "lbsresponse/user/add":
@@ -113,7 +116,7 @@ def on_message(client, userdata, message):
 mqParams = {}
 mqParams["url"] = LB_IP
 ''' TODO: read this port from env variables '''
-mqParams["port"] = 1883
+mqParams["port"] = int(MQTT_PORT)
 mqParams["timeout"] = 60
 ''' Mqtt list of topics the server users '''
 mqParams["topic"] = [
@@ -129,13 +132,9 @@ mqParams["topic"] = [
         ]
 mqParams["onMessage"] = on_message
 client = MQTTPubSub(mqParams)
-client.run()
-
 
 ''' HTTP App '''
 app = Flask(__name__)
-app.run(host=LB_IP, port=LB_PORT, debug=True)
-print("Starting server on - ", LB_IP + ":" + LB_PORT)
 
 
 
@@ -235,7 +234,7 @@ def userfunc():
         retval = allusers
         allusers = ""
         if retval:
-            return Response(json.dumps({"username": json.loads(retval)}),
+            return Response(retval,
                             status=200, mimetype='application/json')
         else:
             return Response(json.dumps({}), status=408,
@@ -650,10 +649,20 @@ def archivestream():
             retval = allarchives
             allarchives = ""
             if retval:
-                return Response(json.dumps({"success": " Archive Streams Present: "+str(retval)}), status=200, mimetype='application/json')
+                return Response(json.dumps({"success": " Archive Streams Present: " +
+                                            str(retval)}), status=200,
+                                            mimetype='application/json')
             else:
-                return Response(json.dumps({"error": " Operation Failed"}), status=408, mimetype='application/json')
+                return Response(json.dumps({"error": " Operation Failed"}),
+                                            status=408, mimetype='application/json')
         else:
-            return Response(json.dumps({"error": "Request not supported"}), status=405, mimetype='application/json')
+            return Response(json.dumps({"error": "Request not supported"}),
+                                        status=405, mimetype='application/json')
     else:
         return Response(json.dumps({"error": "Invalid Credentials"}), status=403, mimetype='application/json')
+
+
+if __name__ == "__main__":
+    print("Starting server on - ", LB_IP + ":" + LB_PORT)
+    client.run()
+    app.run(host=LB_IP, port=int(LB_PORT), debug=True)

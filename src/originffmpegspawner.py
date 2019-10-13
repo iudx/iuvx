@@ -15,7 +15,7 @@ class Origin():
         self.msg = ""
         self.mqParams = {}
         self.mqParams["url"] = mqtt_ip
-        self.mqParams["port"] = mqtt_port
+        self.mqParams["port"] = int(mqtt_port)
         self.mqParams["timeout"] = 60
         self.mqParams["topic"] = [("origin/ffmpeg/dist/respawn", 0),
                                   ("origin/ffmpeg/stream/spawn", 0),
@@ -45,6 +45,8 @@ class Origin():
                 self.action = "idle"
                 self.msg = ""
                 continue
+            self.action = "idle"
+            self.msg = ""
             time.sleep(0.001)
 
     def on_message(self, client, userdata, message):
@@ -86,7 +88,7 @@ class DefunctCleaner(threading.Thread):
 
 def main():
     mqtt_ip = os.environ["LB_IP"]
-    mqtt_port = os.environ["LB_PORT"]
+    mqtt_port = os.environ["MQTT_PORT"]
     if mqtt_ip is None or mqtt_port is None:
         print("Error! LB_IP and LB_PORT not set")
         sys.exit(0)

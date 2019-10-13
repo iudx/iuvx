@@ -22,7 +22,7 @@ class LB():
         # MQTT Params
         self.mqParams = {}
         self.mqParams["url"] = mqtt_ip
-        self.mqParams["port"] = mqtt_port
+        self.mqParams["port"] = int(mqtt_port)
         self.mqParams["timeout"] = 60
         self.mqParams["topic"] = [("origin/get", 0), ("dist/get", 0),
                                   ("archive/get", 0), ("stream/get", 0),
@@ -44,8 +44,8 @@ class LB():
 
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
-        self.msg = str(message.payload.decode("utf-8"))
-        self.action = str(message.topic.decode("utf-8"))
+        self.msg = message.payload.decode("UTF-8")
+        self.action = message.topic
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
@@ -179,7 +179,7 @@ class LB():
                                  args=(res,)).start()
 
             if self.action == "user/get":
-                res = lbc.GetUsers.delay(self.msg)
+                res = lbc.GetUsers.delay()
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
 
@@ -197,17 +197,18 @@ class LB():
                 res = lbc.VerifyUser.delay(self.msg)
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
-
-            else:
+            if self.action == "idle":
                 self.action = "idle"
                 self.msg = ""
                 continue
-            time.sleep(0.001)
+            self.action = "idle"
+            self.msg = ""
+            time.sleep(0.01)
 
 
 def main():
     mqtt_ip = os.environ["LB_IP"]
-    mqtt_port = os.environ["LB_PORT"]
+    mqtt_port = os.environ["MQTT_PORT"]
     if mqtt_ip is None or mqtt_port is None:
         print("Error! LB_IP and LB_PORT not set")
         sys.exit(0)

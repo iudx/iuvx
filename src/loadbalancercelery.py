@@ -46,6 +46,8 @@ class Table():
 
     def findOne(self, doc, args=None):
         res = self.collection.find_one(doc, {"_id": 0})
+        if(res is None):
+            return {}
         return res
 
     def findAll(self, doc=None, args=None):
@@ -59,10 +61,10 @@ class Table():
         if args is not None:
             arg.update(args)
         if (doc is not None):
-            res = self.collection.find(doc, arg)
+            res = list(self.collection.find(doc, arg))
             return res
         else:
-            return self.collection.find({}, arg)
+            return list(self.collection.find({}, arg))
 
     def delete(self, doc):
         self.collection.delete_one(doc)
@@ -75,7 +77,8 @@ class Table():
 
 
 ''' mongo initializations '''
-mongoclient = pymongo.MongoClient('mongodb://localhost:27017/')
+''' TODO: Parameterize '''
+mongoclient = pymongo.MongoClient('mongodb://localhost:27017/', connect=False)
 mongoDB = mongoclient["vid-iot"]
 
 '''
@@ -480,7 +483,7 @@ def RequestStream(msg):
                 bestDist = dist
         dist = bestDist
         resp = {"origin_id": stream["origin_id"], "origin_ip": stream["origin_ip"],
-                "dist_id": dist["dist_id"], "dist_ip": dist["dist_ip"]<
+                "dist_id": dist["dist_id"], "dist_ip": dist["dist_ip"],
                 "stream_id": stream["stream_id"], "stream_ip": stream["stream_ip"]}
         userresp = {"stream_id": stream["stream_id"], "rtmp": ffproc["cmd"],
                     "hls": "http://" + ffproc["to_ip"] +
@@ -592,6 +595,7 @@ def GetUsers():
         Response: HTTPServer.py
     '''
     users = usersTable.findAll(args={"password": 0})
+    logger.info("Showing all users")
     return {"topic": "lbsresponse/user/all", "msg": users}
 
 
