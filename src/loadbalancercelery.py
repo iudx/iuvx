@@ -378,7 +378,7 @@ def InsertStream(msg):
         logger.info("No Origin Server Present")
         return 0
 
-    ''' Load balancer logic '''
+    ''' Origin Load balancer logic '''
     origins = originTable.findAll()
     bestOrigin = {}
     bestNumClients = 100
@@ -401,6 +401,7 @@ def InsertStream(msg):
                                     "stream_id": msg["stream_id"],
                                     "origin_ip": origin["origin_ip"],
                                     "origin_id": origin["origin_id"],
+                                    "status": "onboarding",
                                     "dist_ip": ""})
             logger.info("Added stream ", msg["stream_id"],
                         "with IP ", msg["stream_ip"],
