@@ -4,6 +4,7 @@ from celery.utils.log import get_task_logger
 import json
 import pymongo
 import time
+import os
 
 
 '''
@@ -78,7 +79,11 @@ class Table():
 
 ''' mongo initializations '''
 ''' TODO: Parameterize '''
-mongoclient = pymongo.MongoClient('mongodb://localhost:27017/', connect=False)
+uname = os.environ["MONGO_INITDB_ROOT_USERNAME"]
+pwd = os.environ["MONGO_INITDB_ROOT_PASSWORD"]
+url = os.environ["MONGO_URL"]
+mongoclient = pymongo.MongoClient("mongodb://" + uname + ":" + pwd +
+                                  "@" + url + ":27017/", connect=False)
 mongoDB = mongoclient["vid-iot"]
 
 '''

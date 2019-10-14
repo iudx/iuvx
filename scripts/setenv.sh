@@ -5,6 +5,8 @@ echo "Setting environment variables"
 export LB_IP=10.156.14.138
 export LB_PORT=5000
 export MQTT_PORT=1883
+export MQTT_UNAME=vid
+export MQTT_PASSWD=vid@rbc
 export ORIGIN_IP=10.156.14.138
 export ORIGIN_ID=TestOrigin
 export DIST_IP=10.156.14.138

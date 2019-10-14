@@ -30,6 +30,8 @@ logger = logging.getLogger("werkzeug")
 LB_IP = os.environ["LB_IP"]
 LB_PORT = os.environ["LB_PORT"]
 MQTT_PORT = os.environ["MQTT_PORT"]
+MQTT_UNAME = os.environ["MQTT_UNAME"]
+MQTT_PASSWD = os.environ["MQTT_PASSWD"]
 if LB_IP is None or LB_PORT is None:
     print("Error! LB_IP and LB_PORT not set")
     sys.exit(0)
@@ -117,6 +119,8 @@ mqParams = {}
 mqParams["url"] = LB_IP
 ''' TODO: read this port from env variables '''
 mqParams["port"] = int(MQTT_PORT)
+mqParams["username"] = MQTT_UNAME
+mqParams["password"] = MQTT_PASSWD
 mqParams["timeout"] = 60
 ''' Mqtt list of topics the server users '''
 mqParams["topic"] = [
