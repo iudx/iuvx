@@ -24,28 +24,29 @@ class LB():
         self.mqParams["url"] = mqtt_ip
         self.mqParams["port"] = int(mqtt_port)
         self.mqParams["timeout"] = 60
-        self.mqParams["topic"] = [("origin/get", 0), ("dist/get", 0),
-                                  ("archive/get", 0), ("stream/get", 0),
-                                  ("user/get", 0), ("verify/user", 0),
-                                  ("user/add", 0), ("user/del", 0),
-                                  ("db/dist/ffmpeg/respawn", 0),
-                                  ("archive/delete", 0), ("archive/add", 0),
-                                  ("request/allstreams", 0),
-                                  ("db/origin/ffmpeg/respawn", 0),
-                                  ("origin/stat", 0), ("dist/stat", 0),
-                                  ("origin/add", 0), ("origin/delete", 0),
-                                  ("dist/add", 0), ("dist/delete", 0),
-                                  ("stream/add", 0), ("stream/delete", 0),
-                                  ("stream/request", 0),
-                                  ("db/origin/ffmpeg/dist/spawn", 0),
-                                  ("db/origin/ffmpeg/stream/spawn", 0)]
+        self.mqParams["topic"] = [("origin/get", 1), ("dist/get", 1),
+                                  ("archive/get", 1), ("stream/get", 1),
+                                  ("user/get", 1), ("verify/user", 1),
+                                  ("user/add", 1), ("user/del", 1),
+                                  ("db/dist/ffmpeg/respawn", 1),
+                                  ("archive/delete", 1), ("archive/add", 1),
+                                  ("request/allstreams", 1),
+                                  ("db/origin/ffmpeg/respawn", 1),
+                                  ("origin/stat", 1), ("dist/stat", 1),
+                                  ("origin/add", 1), ("origin/delete", 1),
+                                  ("dist/add", 1), ("dist/delete", 1),
+                                  ("stream/add", 1), ("stream/delete", 1),
+                                  ("stream/request", 1),
+                                  ("db/origin/ffmpeg/dist/spawn", 1),
+                                  ("db/origin/ffmpeg/stream/spawn", 1)]
         self.mqParams["onMessage"] = self.on_message
         self.client = MQTTPubSub(self.mqParams)
 
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
-        self.msg = message.payload.decode("UTF-8")
+        self.msg = message.payload
         self.action = message.topic
+        print(self.action, self.msg)
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
@@ -56,18 +57,11 @@ class LB():
                     pass
                 elif isinstance(ret, dict):
                     self.client.publish(ret["topic"],
-                                        json.dumps(ret["msg"]))
-                    time.sleep(0.1)
+                                        ret["msg"])
                 elif isinstance(ret, list):
                     for retDict in ret:
-                        if ((retDict["topic"] is
-                                "origin/ffmpeg/stream/stat/spawn") or
-                            (retDict["topic"] is
-                                "dist/ffmpeg/stream/stat/spawn")):
-                            time.sleep(30)
-                            self.client.publish(retDict["topic"],
-                                                json.dumps(retDict["msg"]))
-                        time.sleep(0.1)
+                        self.client.publish(retDict["topic"],
+                                            retDict["msg"])
                 break
 
     def router(self):
@@ -197,13 +191,10 @@ class LB():
                 res = lbc.VerifyUser.delay(self.msg)
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
-            if self.action == "idle":
-                self.action = "idle"
-                self.msg = ""
-                continue
+
             self.action = "idle"
             self.msg = ""
-            time.sleep(0.01)
+            time.sleep(0.001)
 
 
 def main():

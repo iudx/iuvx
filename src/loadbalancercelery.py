@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from celery import Celery
-from celery.utils.log import get_task_logger
+import logging
 import json
 import pymongo
 import time
@@ -14,6 +14,7 @@ import os
         1. Validation at mongodb
         2. Parameterize celery app parameters
         3. Return json everywhere
+        4. rmtp links are broken (cmd)
 '''
 
 
@@ -21,7 +22,7 @@ import os
 app = Celery('loadbalancercelery', backend="redis://", broker="redis://")
 
 '''Logger '''
-logger = get_task_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Table():
@@ -36,7 +37,7 @@ class Table():
 
     def insertOne(self, doc):
         res = self.collection.insert_one(doc)
-        if(res.inserted_id is not None):
+        if bool(res.inserted_id):
             return 1
         else:
             return 0
@@ -47,7 +48,9 @@ class Table():
 
     def findOne(self, doc, args=None):
         res = self.collection.find_one(doc, {"_id": 0})
-        if(res is None):
+        print(res)
+        logger.info(res)
+        if not bool(res):
             return {}
         return res
 
@@ -59,9 +62,9 @@ class Table():
         '''
         ''' Exclude id from result '''
         arg = {"_id": 0}
-        if args is not None:
+        if bool(args):
             arg.update(args)
-        if (doc is not None):
+        if bool(doc):
             res = list(self.collection.find(doc, arg))
             return res
         else:
@@ -152,10 +155,10 @@ def InsertOrigin(msg):
     msg = json.loads(msg)
     ret = originTable.insertOne(msg)
     if ret == 1:
-        logger.info("Added origin ", msg["origin_id"])
+        logger.info("Added origin " + msg["origin_id"])
         return {"topic": "lbsresponse/origin/add", "msg": True}
     else:
-        logger.info("Origin already present", msg["origin_ip"])
+        logger.info("Origin already present" + msg["origin_ip"])
         return {"topic": "lbsresponse/origin/add", "msg": False}
 
 
@@ -184,7 +187,7 @@ def DeleteOrigin(msg):
     logger.info("Deleting Origin")
     ret = originTable.delete({"origin_id": msg["origin_id"]})
     if ret == 1:
-        logger.info("Deleted origin ", msg["origin_id"])
+        logger.info("Deleted origin " + msg["origin_id"])
         ffmpegProcsTable.deleteMany({"to_id": msg["origin_id"]})
         ffmpegProcsTable.deleteMany({"origin_id": msg["origin_id"]})
         streamsTable.deleteMany({"from_id": msg["origin_id"]})
@@ -257,10 +260,10 @@ def InsertDist(msg):
     msg = json.loads(msg)
     ret = distTable.insertOne(msg)
     if ret == 1:
-        logger.info("Added dist", msg["dist_id"])
+        logger.info("Added dist" + msg["dist_id"])
         return {"topic": "lbsresponse/dist/add", "msg": True}
     else:
-        logger.info("Dist already present", msg["dist_ip"])
+        logger.info("Dist already present" + msg["dist_ip"])
 
 
 @app.task
@@ -276,7 +279,7 @@ def DeleteDist(msg):
     ret = distTable.delete({"dist_id": msg["dist_id"]})
     killlist = []
     if ret == 1:
-        logger.info("Deleted dist ", msg["dist_id"])
+        logger.info("Deleted dist " + msg["dist_id"])
         killlist = ffmpegProcsTable.findAll({"dist_id": msg["dist_id"]})
         ffmpegProcsTable.deleteMany({"to_id": msg["dist_id"]})
         ffmpegProcsTable.deleteMany({"dist_id": msg["dist_id"]})
@@ -365,7 +368,7 @@ def OriginFFmpegDistRespawn(msg):
         TODO: Respawn based on logic
     '''
     msg = json.loads(msg)
-    logger.info("Respawning", msg["stream_id"])
+    logger.info("Respawning" + msg["stream_id"])
     return {"topic": "origin/ffmpeg/dist/respawn", "msg": msg}
 
 
@@ -408,23 +411,23 @@ def InsertStream(msg):
                                     "origin_id": origin["origin_id"],
                                     "status": "onboarding",
                                     "dist_ip": ""})
-            logger.info("Added stream ", msg["stream_id"],
-                        "with IP ", msg["stream_ip"],
-                        " to ", origin["origin_id"])
-            out = {"origin_ip": origin["origin_ip"],
-                   "origin_id": origin["origin_id"],
-                   "stream_id": msg["stream_id"],
-                   "stream_ip": msg["stream_ip"]}
-            return [{"topic": "lbsresponse/stream/add", "msg": True},
+            logger.info("Added stream " + msg["stream_id"] +
+                        " with IP " + msg["stream_ip"] +
+                        " to " + origin["origin_id"])
+            out = json.dumps({"origin_ip": origin["origin_ip"],
+                              "origin_id": origin["origin_id"],
+                              "stream_id": msg["stream_id"],
+                              "stream_ip": msg["stream_ip"]})
+            return [{"topic": "lbsresponse/stream/add", "msg": out},
                     {"topic": "origin/ffmpeg/stream/spawn", "msg": out},
                     {"topic": "origin/ffmpeg/stream/stat/spawn", "msg": out}]
         else:
-            logger.warning("Stream ID ", msg["stream_id"],
+            logger.warning("Stream ID " + msg["stream_id"],
                            " to ", origin["origin_id"],
                            " already present.  Choose different ID.")
             return {"topic": "lbsresponse/stream/add", "msg": False}
     else:
-        logger.warning("Stream IP ", msg["stream_ip"],
+        logger.warning("Stream IP " + msg["stream_ip"],
                        " to ", origin["origin_id"], " already present")
         return {"topic": "lbsresponse/stream/add", "msg": False}
 
@@ -440,9 +443,9 @@ def DeleteStream(msg):
     msg = json.loads(msg)
     killlist = []
     streams = streamsTable.findAll(msg)
-    logger.info("Deleting ", msg["stream_id"], " from", )
+    logger.info("Deleting " + msg["stream_id"], " from", )
     if len(streams) is 0:
-        logger.info("Stream ", msg["stream_id"], " not found")
+        logger.info("Stream " + msg["stream_id"], " not found")
         return {"topic": "lbsresponse/stream/del", "msg": False}
     else:
         killlist = ffmpegProcsTable.findAll(msg)
@@ -466,19 +469,13 @@ def RequestStream(msg):
     stream = streamsTable.findOne(msg)
     ffproc = ffmpegProcsTable.findOne(msg)
 
-    if (len(stream) is 0):
+    if not bool(stream):
         ''' Steram not present at the origin server '''
         logger.error("Stream not present")
         return {"topic": "lbsresponse/rtmp",
                 "msg": json.dumps({"info": "unavailable"})}
 
-    if (len(stream) is not 0) and (len(ffproc) is 0):
-        ''' Stream registered but origin ffmpeg processes missing '''
-        return {"topic": "lbsresponse/rtmp",
-                "msg": json.dumps({"info": "processing"})}
-
-    if (len(stream) is not 0) and (len(ffproc) is 0):
-        ''' Stream registered but dist ffmpeg processes missing '''
+    if bool(stream) and not bool(ffproc):
 
         ''' Load balancer logic '''
         dists = distTable.findAll()
@@ -504,9 +501,9 @@ def RequestStream(msg):
                  "msg": json.dumps(resp)},
                 ]
 
-    else:
+    elif bool(stream) and bool(ffproc):
         ''' All required conditions to send link are met '''
-        logger.info("Stream ", msg["stream_id"], " already present")
+        logger.info("Stream " + msg["stream_id"], " already present")
         userresp = {"stream_id": msg["stream_id"],
                     "rtmp": ffproc["cmd"],
                     "hls": "http://" + ffproc["to_ip"] +
@@ -544,8 +541,8 @@ def ArchiveAdd(msg):
     logger.info("Adding archive")
     stream = streamsTable.findone({"stream_id": msg["stream_id"]})
     archive = archivesTable.findone({"stream_id": msg["stream_id"]})
-    if (len(stream) is 1) and (len(archive is 0)):
-        logger.info("Archiving ", msg["stream_id"])
+    if (len(stream) is 1) and (len(archive) is 0):
+        logger.info("Archiving " + msg["stream_id"])
         archivesTable.insertOne(msg)
         return [{"topic": "lbsresponse/archive/add", "msg": True},
                 {"topic": "origin/ffmpeg/archive/add", "msg": msg}]
@@ -570,12 +567,12 @@ def ArchiveDel(msg):
     stream = streamsTable.findone({"stream_id": msg["stream_id"]})
     archive = archivesTable.findone({"stream_id": msg["stream_id"]})
     if (len(stream) is not 0) and (len(archive) is not 0):
-        logger.info("Deleting archive for", msg["stream_id"])
+        logger.info("Deleting archive for" + msg["stream_id"])
         archivesTable.delete(stream["stream_id"])
         return [{"topic": "lbsresponse/archive/del", "msg": True},
                 {"topic": "origin/ffmpeg/archive/delete", "msg": msg}]
     else:
-        logger.info("Archive for ", msg["stream_id"], " not present")
+        logger.info("Archive for " + msg["stream_id"], " not present")
         return {"topic": "lbsresponse/archive/del", "msg": False}
 
 
@@ -600,7 +597,7 @@ def GetUsers():
         Handles: Show all users of the server
         Response: HTTPServer.py
     '''
-    users = usersTable.findAll(args={"password": 0})
+    users = json.dumps(usersTable.findAll(args={"password": 0}))
     logger.info("Showing all users")
     return {"topic": "lbsresponse/user/all", "msg": users}
 
@@ -615,8 +612,8 @@ def AddUser(msg):
     '''
     msg = json.loads(msg)
     user = usersTable.findOne({"username": msg["username"]})
-    if len(user) is 0:
-        logger.info("Added user", msg["username"])
+    if not bool(user):
+        logger.info("Added user" + msg["username"])
         usersTable.insertOne(msg)
         return {"topic": "lbsresponse/user/add", "msg": True}
     else:
@@ -632,14 +629,15 @@ def DelUser(msg):
         Response: HTTPServer.py
     '''
     msg = json.loads(msg)
+    logger.info("Deleting " + msg["username"])
     user = usersTable.findOne({"username": msg["username"]})
-    if (len(user) is not 1):
-        logger.info("User ", msg["username"], " not present")
+    logger.info("User is ... " + str(user))
+    if bool(user):
+        logger.info("User " + msg["username"] + " not present")
         return {"topic": "lbsresponse/user/del", "msg": False}
     else:
-        if msg["password"] is not user["password"]:
-            return {"topic": "lbsresponse/user/del", "msg": False}
         usersTable.delete(msg)
+        logger.info("User " + msg["username"] + " deleted")
         return {"topic": "lbsresponse/user/del", "msg": True}
 
 
@@ -652,8 +650,9 @@ def VerifyUser(msg):
         Response: HTTPServer.py
     '''
     msg = json.loads(msg)
-    logger.info("Verifying ", msg["username"])
+    logger.info("Verifying " + msg["username"])
     user = usersTable.findOne({"username": msg["username"]})
-    if msg["password"] is not user["password"]:
-        return {"topic": "lbsresponse/verified", "msg": False}
+    if bool(user):
+        if msg["password"] != user["password"]:
+            return {"topic": "lbsresponse/verified", "msg": False}
     return {"topic": "lbsresponse/verified", "msg": True}

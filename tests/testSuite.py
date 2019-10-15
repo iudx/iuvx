@@ -6,8 +6,8 @@ import os
 import sys
 import json
 import unittest
-import pymongo
 import time
+import pymongo
 
 
 class Vid():
@@ -21,94 +21,98 @@ class Vid():
                           "accept": "application/json",
                           "Content-Type": "application/json"}
         self.root_link = "http://" + LB_IP + ":" + LB_Port
-        mongoclient = pymongo.MongoClient('mongodb://localhost:27017/')
-        mongoclient.drop_database("ALL_Streams")
+        uname = os.environ["MONGO_INITDB_ROOT_USERNAME"]
+        pwd = os.environ["MONGO_INITDB_ROOT_PASSWORD"]
+        url = os.environ["MONGO_URL"]
+        mongoclient = pymongo.MongoClient("mongodb://" + uname + ":" + pwd +
+                                          "@" + url + ":27017/", connect=False)
+        mongoclient.drop_database("vid-iot")
 
-    def createUser(self):
+    def createUser(self, user_cred=None):
         ''' Root functions '''
         reqLink = self.root_link + "/user"
-        resp = requests.post(reqLink, data=json.dumps(self.test_cred))
-        print(resp)
-        print(resp.text)
-        print(resp.json())
+        if(user_cred is not None):
+            resp = requests.post(reqLink, data=json.dumps(user_cred))
+        else:
+            resp = requests.post(reqLink, data=json.dumps(self.test_cred))
+        print(resp.status_code)
+        return resp.status_code
 
-    def deleteUser(self):
+    def deleteUser(self, user_cred=None):
         reqLink = self.root_link + "/user"
-        resp = requests.delete(reqLink, data=json.dumps(self.test_cred))
-        print(resp.json())
+        if(user_cred is not None):
+            resp = requests.delete(reqLink, data=json.dumps(user_cred))
+        else:
+            resp = requests.delete(reqLink, data=json.dumps(self.test_cred))
+        print(resp.status_code)
+        return resp.status_code
 
     def allUsers(self):
         reqLink = self.root_link + "/user"
         resp = requests.get(reqLink)
         print(resp.json())
+        return len(resp.json())
 
     def addOrigin(self, origin_id, origin_ip):
-        print("Adding Origin")
         reqLink = self.root_link + "/origin"
-        d = json.dumps({"id": origin_id, "ip": origin_ip})
+        d = json.dumps({"origin_id": origin_id, "origin_ip": origin_ip})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
-        print(resp.text)
+        return resp.status_code
 
     def deleteOrigin(self, origin_id, origin_ip):
-        print("Deleting Origin")
         reqLink = self.root_link + "/origin"
-        d = json.dumps({"id": origin_id, "ip": origin_ip})
+        d = json.dumps({"origin_id": origin_id})
         resp = requests.delete(reqLink, data=d, headers=self.test_cred)
-        print(resp.json())
+        return resp.status_code
 
     def allOrigin(self):
-        print("Showing all orgin server")
         reqLink = self.root_link + "/origin"
         resp = requests.get(reqLink, headers=self.test_cred)
         print(resp.json())
+        return len(resp.json())
 
     def addDist(self, dist_id, dist_ip):
-        print("Adding Distribution")
         reqLink = self.root_link + "/dist"
-        d = json.dumps({"id": dist_id, "ip": dist_ip})
+        d = json.dumps({"dist_id": dist_id, "dist_ip": dist_ip})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
-        print(resp.json())
+        return resp.status_code
 
     def deleteDist(self, dist_id, dist_ip):
-        print("Deleting Distribution")
         reqLink = self.root_link + "/dist"
-        d = json.dumps({"id": dist_id, "ip": dist_ip})
+        d = json.dumps({"dist_id": dist_id})
         resp = requests.delete(reqLink, data=d, headers=self.test_cred)
-        print(resp.json())
+        return resp.status_code
 
     def allDist(self):
-        print("Showing all distribution")
         reqLink = self.root_link + "/dist"
         resp = requests.get(reqLink, headers=self.test_cred)
         print(resp.json())
+        return resp.status_code
 
     def addStream(self, stream_id, stream_ip):
-        print("Adding stream")
         reqLink = self.root_link + "/streams"
-        d = json.dumps({"id": stream_id, "ip": stream_ip})
-        print(d)
+        d = json.dumps({"stream_id": stream_id, "stream_ip": stream_ip})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
         print(resp.json())
+        return resp.status_code
 
     def deleteStream(self, stream_id, stream_ip):
-        print("Deleting stream")
         reqLink = self.root_link + "/streams"
-        d = json.dumps({"id": stream_id, "ip": stream_ip})
+        d = json.dumps({"stream_id": stream_id, "stream_ip": stream_ip})
         resp = requests.delete(reqLink, data=d, headers=self.test_cred)
-        print(resp.json())
+        return resp.status_code
 
     def allStreams(self):
-        print("Showing all streams")
         reqLink = self.root_link + "/streams"
         resp = requests.get(reqLink, headers=self.test_cred)
         print(resp.json())
+        return resp.status_code
 
     def reqStream(self, stream_id):
-        print("Requesting stream")
         reqLink = self.root_link + "/request"
-        d = json.dumps({"id": stream_id})
+        d = json.dumps({"stream_id": stream_id})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
-        print(resp.json())
+        return resp.status_code
 
 
 class VidTest(unittest.TestCase):
@@ -140,26 +144,58 @@ class VidTest(unittest.TestCase):
         self.vs = Vid(self.LB_IP, self.LB_Port,
                       self.ROOT_uname, self.ROOT_passwd)
 
-
-    def test_createUser(self):
-        self.vs.createUser()
+    def test_user(self):
+        print("Testing User creation functions ")
+        vec = [{"username": u, "password": u} for u in ["test1", "test2", "test3"] ] 
+        succ_create = 0.
+        succ_get = 0.
+        succ_delete = 0.
+        num = 100
+        for n in range(num):
+            for v in vec:
+                if self.vs.createUser(v) == 200:
+                    succ_create += 1
+            for v in vec:
+                if self.vs.allUsers() == 3:
+                    succ_get += 1
+            for v in vec:
+                if self.vs.deleteUser(v) == 204:
+                    succ_delete += 1
+        print("Success of creation", succ_create/num)
+        print("Success of Get", succ_get/num)
+        print("Success of delete", succ_delete/num)
 
     def test_simpleFlow(self):
         print("Creating user")
         self.vs.createUser()
+        print("User Created")
+        raw_input()
+        print("Showing all Users")
         self.vs.allUsers()
+        raw_input()
+        print("Adding Origin")
         self.vs.addOrigin(self.origin_id, self.origin_ip)
+        raw_input()
+        print("Showing all origins")
         self.vs.allOrigin()
+        raw_input()
+        print("Adding dist")
         self.vs.addDist(self.dist_id, self.dist_ip)
+        raw_input()
+        print("Showing all dists")
         self.vs.allDist()
+        raw_input()
         for stream in self.streams:
             print("Adding stream", stream["id"])
             self.vs.addStream(stream["id"], stream["ip"])
+            raw_input()
         self.vs.allStreams()
-        time.sleep(10)
+        raw_input()
+        time.sleep(1)
         for stream in self.streams:
             print("Requesting stream", stream)
             self.vs.reqStream(stream["id"])
+            raw_input()
 
 
 if __name__ == '__main__':

@@ -23,7 +23,6 @@ import time
 
 
 ''' Logger utility '''
-logging.basicConfig(filename="log.out")
 logger = logging.getLogger("werkzeug")
 
 
@@ -34,7 +33,7 @@ MQTT_PORT = os.environ["MQTT_PORT"]
 MQTT_UNAME = os.environ["MQTT_UNAME"]
 MQTT_PASSWD = os.environ["MQTT_PASSWD"]
 if LB_IP is None or LB_PORT is None:
-    print("Error! LB_IP and LB_PORT not set")
+    logger.info("Error! LB_IP and LB_PORT not set")
     sys.exit(0)
 
 
@@ -64,7 +63,7 @@ delarchives = ""
 
 
 ''' Seconds '''
-timeout = 1
+timeout = 5
 
 
 def on_message(client, userdata, message):
@@ -79,18 +78,18 @@ def on_message(client, userdata, message):
     global adddists, deldists, addstreams, allstreams
     global delstreams, allarchives, addarchives, delarchives
     global stream_link
-    msg = message.payload.decode("utf-8")
-    topic = message.topic.decode("utf-8")
+    msg = message.payload
+    topic = message.topic
     print(msg)
     print(topic)
     if topic == "lbsresponse/rtmp":
         stream_link = msg
     if topic == "lbsresponse/user/add":
-        addusers = json.loads(msg)
+        addusers = msg
     if topic == "lbsresponse/user/del":
-        delusers = json.loads(msg)
+        delusers = msg
     if topic == "lbsresponse/verified":
-        verified = json.loads(msg)
+        verified = msg
     if topic == "lbsresponse/archive/all":
         allarchives = msg
     if topic == "lbsresponse/user/all":
@@ -102,21 +101,21 @@ def on_message(client, userdata, message):
     if topic == "lbsresponse/stream/all":
         allstreams = msg
     if topic == "lbsresponse/origin/add":
-        addorigin = json.loads(msg)
+        addorigin = msg
     if topic == "lbsresponse/origin/del":
-        delorigin = json.loads(msg)
+        delorigin = msg
     if topic == "lbsresponse/stream/add":
-        addstreams = json.loads(msg)
+        addstreams = msg
     if topic == "lbsresponse/stream/del":
-        delstreams = json.loads(msg)
+        delstreams = msg
     if topic == "lbsresponse/dist/add":
-        adddists = json.loads(msg)
+        adddists = msg
     if topic == "lbsresponse/dist/del":
-        deldists = json.loads(msg)
+        deldists = msg
     if topic == "lbsresponse/archive/add":
-        addarchives = json.loads(msg)
+        addarchives = msg
     if topic == "lbsresponse/archive/del":
-        delarchives = json.loads(msg)
+        delarchives = msg
 
 
 ''' MQTT params and client '''
@@ -156,13 +155,13 @@ app = Flask(__name__)
 
 def verify_password(username, password):
     ''' Auth '''
-    global verified
+    global verified, timeout
     hashed_password = hashlib.sha512(password).hexdigest()
-    reqdict = {"User": username, "Password": hashed_password}
+    reqdict = {"username": username, "password": hashed_password}
     ''' TODO: don't use mqtt for user authentiaction '''
     client.publish("verify/user", json.dumps(reqdict))
     timeout_start = time.time()
-    while time.time() < timeout_start + timeout or verified == "":
+    while time.time() < timeout_start + timeout and verified == "":
         continue
     retval = verified
     verified = ""
@@ -177,7 +176,8 @@ def userfunc():
     '''
     Admin related tasks like adding user, deleting user
     '''
-    global addusers, delusers, verified, allusers
+    global addusers, delusers, verified, allusers, timeout
+    logger.info("Reached userfunc")
     if request.method == "POST":
         '''
             Create new user
@@ -195,7 +195,7 @@ def userfunc():
         ''' TODO: Remove mqtt publish for creating user '''
         client.publish("user/add", json.dumps(reqdict))
         timeout_start = time.time()
-        while time.time() < timeout_start + timeout or addusers == "":
+        while time.time() < timeout_start + timeout and addusers == "":
             continue
         retval = addusers
         addusers = ""
@@ -219,10 +219,11 @@ def userfunc():
         user_name = data["username"]
         user_pass = data["password"]
         hashed_password = hashlib.sha512(user_pass).hexdigest()
-        reqdict = {"User": user_name, "Password": hashed_password}
+        reqdict = {"username": user_name, "password": hashed_password}
         ''' TODO: Remove mqtt publish for creating user '''
         client.publish("user/del", json.dumps(reqdict))
-        while (delusers == ""):
+        timeout_start = time.time()
+        while time.time() < timeout_start + timeout and delusers == "":
             continue
         retval = delusers
         delusers = ""
@@ -241,7 +242,7 @@ def userfunc():
         '''
         client.publish('user/get', "All users")
         timeout_start = time.time()
-        while time.time() < timeout_start + timeout or allusers == "":
+        while time.time() < timeout_start + timeout and allusers == "":
             continue
         retval = allusers
         allusers = ""
@@ -260,6 +261,7 @@ def userfunc():
 @app.route('/request', methods=['POST'])
 def reqstream():
     '''
+        TODO
         Request for a  specified stream
         Header: {"username": "username", "password": "password"}
         Args:
@@ -270,25 +272,24 @@ def reqstream():
     '''
     if (verify_password(request.headers["username"],
                         request.headers["password"])):
-        print("Stream request received")
+        logger.info("Stream request received")
         stream_link = ""
         data = request.get_json(force=True)
         stream_id = data["stream_id"]
-        user_ip = request.remote_addr
         ''' TODO: make schema changes in accordance to schema '''
-        reqdict = {"user_ip": user_ip, "stream_id": stream_id}
+        reqdict = {"stream_id": stream_id}
         client.publish("stream/request", json.dumps(reqdict))
         ''' TODO: Remove mqtt publish for creating user '''
         timeout_start = time.time()
-        while time.time() < timeout_start + timeout or stream_link == "":
+        while time.time() < timeout_start + timeout and stream_link == "":
             continue
         retval = stream_link
         stream_link = ""
-        if retval == "false":
+        if retval:
             ''' TODO: make schema changes in accordance to schema '''
             return Response(json.dumps({}), status=409, mimetype='application/json')
         else:
-            return Response(json.dumps({"success": retval+" .... Stream will be available in a while.."}),
+            return Response(retval,
                             status=200, mimetype="application/json")
     else:
         return Response(json.dumps({}), status=403, mimetype='application/json')
@@ -311,22 +312,23 @@ def stream():
                     dict (str): {"stream_id": "xyz", "stream_ip": "uri-format"}
                     Note: stream_ip is a playback ip with uname and passwd
                 Returns:
-                    str: If success - 200 {}
+                    str: If success - 200 {origin_id, stream_id, origin_ip, stream_ip}
                          If failed - 409 {}
             '''
             data = request.get_json(force=True)
             stream_ip = data["stream_ip"]
             stream_id = data["stream_id"]
-            print("Added Stream " + str(stream_id))
+            logger.info("Added Stream " + str(stream_id))
             streamadddict = {"stream_id": stream_id, "stream_ip": stream_ip}
             client.publish("stream/add", json.dumps(streamadddict))
             timeout_start = time.time()
-            while time.time() < timeout_start + timeout or addstreams == "":
+            while time.time() < timeout_start + timeout and addstreams == "":
                 continue
             retval = addstreams
             addstreams = ""
+            print("Insert streammmmmmmmmmmm ", retval)
             if retval:
-                return Response(json.dumps({}),
+                return Response(json.dumps(retval),
                                 status=200, mimetype="application/json")
             else:
                 return Response(json.dumps({}),
@@ -344,11 +346,12 @@ def stream():
             data = request.get_json(force=True)
             stream_ip = data["stream_ip"]
             stream_id = data["stream_id"]
-            print("Deleted Stream " + str(stream_id))
+            logger.info("Deleted Stream " + str(stream_id))
             ''' TODO: make schema changes in accordance to schema '''
             streamdeldict = {"stream_id": stream_id}
             client.publish("stream/delete", json.dumps(streamdeldict))
-            while (delstreams == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout and delstreams == "":
                 continue
             retval = delstreams
             delstreams = ""
@@ -374,20 +377,20 @@ def stream():
             '''
             client.publish("stream/get", json.dumps({}))
             timeout_start = time.time()
-            while time.time() < timeout_start + timeout or allstreams == "":
+            while time.time() < timeout_start + timeout and allstreams == "":
                 continue
             retval = allstreams
             allstreams = ""
             ''' TODO: make schema changes in accordance to schema '''
             if retval:
-                return Response(json.dumps({"success": " Streams Present: "+str(retval)}), status=200, mimetype='application/json')
+                return Response(retval, status=200, mimetype='application/json')
             else:
-                return Response(json.dumps({"error": " Operation Failed"}), status=408, mimetype='application/json')
+                return Response(json.dumps({}), status=408, mimetype='application/json')
         else:
-            return Response(json.dumps({"error": "Request not supported"}), status=405, mimetype='application/json')
+            return Response(json.dumps({}), status=405, mimetype='application/json')
 
     else:
-        return Response(json.dumps({"error": "Invalid Credentials"}), status=403, mimetype='application/json')
+        return Response(json.dumps({}), status=403, mimetype='application/json')
 
 
 @app.route('/origin', methods=['POST', 'DELETE', 'GET'])
@@ -410,16 +413,18 @@ def origin():
             data = request.get_json(force=True)
             origin_ip = data["origin_ip"]
             origin_id = data["origin_id"]
-            print("Added Origin Server " + str(origin_ip))
+            logger.info("Added Origin Server " + str(origin_ip))
             originadddict = {"origin_id": origin_id, "origin_ip": origin_ip,
                              "num_clients": 0}
             client.publish("origin/add", json.dumps(originadddict))
             timeout_start = time.time()
-            while time.time() < timeout_start + timeout or addorigin == "":
+            while time.time() < timeout_start + timeout and addorigin == "":
                 continue
             retval = addorigin
             addorigin = ""
-            if retval["msg"] == True:
+            print("Adding originnnnnnnn")
+            print(retval)
+            if retval is True:
                 return Response(json.dumps({}),
                                 status=200, mimetype="application/json")
             else:
@@ -437,7 +442,7 @@ def origin():
             '''
             data = request.get_json(force=True)
             origin_id = data["origin_id"]
-            print("Deleted Origin Server " + str(origin_id))
+            logger.info("Deleted Origin Server " + str(origin_id))
             origindeldict = {"origin_id": origin_id}
             client.publish("origin/delete", json.dumps(origindeldict))
             while (delorigin == ""):
@@ -456,9 +461,9 @@ def origin():
                     str: If success - 200 [{"origin_ip": "uri-format", "origin_id": "xyz"}]
                          If failed - 404 {}
             '''
-            client.publish("origin/get", "All origins")
+            client.publish("origin/get", "")
             timeout_start = time.time()
-            while time.time() < timeout_start + timeout or allorigins == "":
+            while time.time() < timeout_start + timeout and allorigins == "":
                 continue
             retval = allorigins
             allorigins = ""
@@ -492,11 +497,11 @@ def dist():
             data = request.get_json(force=True)
             dist_ip = data["dist_ip"]
             dist_id = data["dist_id"]
-            print("Added Distribution "+str(dist_ip))
+            logger.info("Added Distribution "+str(dist_ip))
             distadddict = {"dist_id": dist_id, "dist_ip": dist_ip, "num_clients": 0}
             client.publish("dist/add", json.dumps(distadddict))
             timeout_start = time.time()
-            while time.time() < timeout_start + timeout or adddists == "":
+            while time.time() < timeout_start + timeout and adddists == "":
                 continue
             retval = adddists
             adddists = ""
@@ -516,10 +521,10 @@ def dist():
             '''
             data = request.get_json(force=True)
             dist_id = data["id"]
-            print("Deleted Distribution "+str(dist_id))
+            logger.info("Deleted Distribution "+str(dist_id))
             distdeldict = {"dist_id": dist_id}
             client.publish("dist/delete", json.dumps(distdeldict))
-            while (deldists == ""):
+            while time.time() < timeout_start + timeout and deldists == "":
                 continue
             retval = deldists
             deldists = ""
@@ -537,14 +542,14 @@ def dist():
                     str: If success - 200 [{"dist_ip": "uri-format", "dist_id": "xyz"}]
                          If failed - 404 {}
             '''
-            client.publish("dist/get", "All dists")
+            client.publish("dist/get", "")
             timeout_start = time.time()
-            while time.time() < timeout_start + timeout or alldists == "":
+            while time.time() < timeout_start + timeout and alldists == "":
                 continue
             retval = alldists
             alldists = ""
             if retval:
-                return Response(json.dumps({}), status=200, mimetype='application/json')
+                return Response(retval, status=200, mimetype='application/json')
             else:
                 logger.log("Distribution", "Operation Failed")
                 return Response(json.dumps({}), status=408, mimetype='application/json')
@@ -685,6 +690,6 @@ def archivestream():
 
 
 if __name__ == "__main__":
-    print("Starting server on - ", LB_IP + ":" + LB_PORT)
+    logger.info("Starting server on - ", LB_IP + ":" + LB_PORT)
     client.run()
     app.run(host=LB_IP, port=int(LB_PORT), debug=True)
