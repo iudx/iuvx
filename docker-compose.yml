@@ -1,0 +1,39 @@
+version: '3'
+
+volumes:
+  mongo-data:
+
+networks:
+  vidiot-net:
+    driver: bridge
+
+services:
+
+  lb:
+    build: 
+      dockerfile: ./Dockerfile
+      context: .
+    depends_on:
+      - "db"
+    ports:
+      - "5000:5000"
+      - "1935:1935"
+    restart: on-failure
+    env_file: 
+      - ./scripts/docker_env.env
+    networks: 
+      - vidiot-net
+    volumes: 
+      - ./:/vidiot/
+    command: sh -c "tail -F lb"
+
+  db:
+    image: mongo
+    volumes:
+      - mongo-data:/var/lib/mongodb/
+    env_file: 
+      - ./scripts/docker_env.env
+    expose:
+      - "27017"
+    networks: 
+      - vidiot-net

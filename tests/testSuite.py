@@ -118,8 +118,8 @@ class VidTest(unittest.TestCase):
         super(VidTest, self).__init__(*args, **kwargs)
         self.LB_IP = os.environ["LB_IP"]
         self.LB_Port = os.environ["LB_PORT"]
-        self.ROOT_uname = os.environ["ROOT_uname"]
-        self.ROOT_passwd = os.environ["ROOT_passwd"]
+        self.ROOT_uname = os.environ["ROOT_UNAME"]
+        self.ROOT_passwd = os.environ["ROOT_PASSWD"]
         self.origin_ip = os.environ["ORIGIN_IP"]
         self.origin_id = os.environ["ORIGIN_ID"]
         self.dist_ip = os.environ["DIST_IP"]

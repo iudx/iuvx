@@ -32,7 +32,7 @@ class Statter():
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         self.origin_IP = str(s.getsockname()[0])
-        self.origin_ID = os.environ("ORIGIN_ID")
+        self.origin_ID = os.environ["ORIGIN_ID"]
         if(self.origin_ID is None):
             sys.exit(0)
 
@@ -247,8 +247,9 @@ if __name__ == "__main__":
                   ("origin/ffmpeg/kill", 0),
                   ("lb/request/origin/streams", 0),
                   ("origin/ffmpeg/killall", 0)]
+    ''' TODO: Parameterize tsdb params '''
     tsDBParams = {"url": "127.0.0.1", "port": 8086,
-                  "uname": "root", "pwd": "root", "app": "statter"}
+                  "uname": "root", "pwd": "root", "appName": "statter"}
     statter = Statter(tsDBParams, statPageURL, mqtt_ip, mqtt_port, mqttTopics)
 
     statter.start()

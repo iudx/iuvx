@@ -6,6 +6,7 @@ import hashlib
 from flask import Response
 import logging
 import sys
+import time
 
 '''
     TODO: 
@@ -60,6 +61,10 @@ delstreams = ""
 allarchives = ""
 addarchives = ""
 delarchives = ""
+
+
+''' Seconds '''
+timeout = 1
 
 
 def on_message(client, userdata, message):
@@ -156,7 +161,8 @@ def verify_password(username, password):
     reqdict = {"User": username, "Password": hashed_password}
     ''' TODO: don't use mqtt for user authentiaction '''
     client.publish("verify/user", json.dumps(reqdict))
-    while(verified == ""):
+    timeout_start = time.time()
+    while time.time() < timeout_start + timeout or verified == "":
         continue
     retval = verified
     verified = ""
@@ -188,7 +194,8 @@ def userfunc():
         reqdict = {"username": user_name, "password": hashed_password}
         ''' TODO: Remove mqtt publish for creating user '''
         client.publish("user/add", json.dumps(reqdict))
-        while(addusers == ""):
+        timeout_start = time.time()
+        while time.time() < timeout_start + timeout or addusers == "":
             continue
         retval = addusers
         addusers = ""
@@ -233,7 +240,8 @@ def userfunc():
                 str: If success - 200 [{"username": "username"},..]
         '''
         client.publish('user/get', "All users")
-        while(allusers == ""):
+        timeout_start = time.time()
+        while time.time() < timeout_start + timeout or allusers == "":
             continue
         retval = allusers
         allusers = ""
@@ -271,7 +279,8 @@ def reqstream():
         reqdict = {"user_ip": user_ip, "stream_id": stream_id}
         client.publish("stream/request", json.dumps(reqdict))
         ''' TODO: Remove mqtt publish for creating user '''
-        while(stream_link == ""):
+        timeout_start = time.time()
+        while time.time() < timeout_start + timeout or stream_link == "":
             continue
         retval = stream_link
         stream_link = ""
@@ -311,7 +320,8 @@ def stream():
             print("Added Stream " + str(stream_id))
             streamadddict = {"stream_id": stream_id, "stream_ip": stream_ip}
             client.publish("stream/add", json.dumps(streamadddict))
-            while(addstreams == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout or addstreams == "":
                 continue
             retval = addstreams
             addstreams = ""
@@ -363,7 +373,8 @@ def stream():
                          If failed - 404 {}
             '''
             client.publish("stream/get", json.dumps({}))
-            while(allstreams == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout or allstreams == "":
                 continue
             retval = allstreams
             allstreams = ""
@@ -403,7 +414,8 @@ def origin():
             originadddict = {"origin_id": origin_id, "origin_ip": origin_ip,
                              "num_clients": 0}
             client.publish("origin/add", json.dumps(originadddict))
-            while(addorigin == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout or addorigin == "":
                 continue
             retval = addorigin
             addorigin = ""
@@ -445,7 +457,8 @@ def origin():
                          If failed - 404 {}
             '''
             client.publish("origin/get", "All origins")
-            while(allorigins == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout or allorigins == "":
                 continue
             retval = allorigins
             allorigins = ""
@@ -482,7 +495,8 @@ def dist():
             print("Added Distribution "+str(dist_ip))
             distadddict = {"dist_id": dist_id, "dist_ip": dist_ip, "num_clients": 0}
             client.publish("dist/add", json.dumps(distadddict))
-            while(adddists == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout or adddists == "":
                 continue
             retval = adddists
             adddists = ""
@@ -524,7 +538,8 @@ def dist():
                          If failed - 404 {}
             '''
             client.publish("dist/get", "All dists")
-            while(alldists == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout or alldists == "":
                 continue
             retval = alldists
             alldists = ""
@@ -585,7 +600,8 @@ def archivestream():
             archivedict = {"user_ip": user_ip, "stream_id": stream_id, "start_date": start_date,
                            "start_time": start_time, "end_date": end_date, "end_time": end_time, "job_id": job_id}
             client.publish("archive/add", json.dumps(archivedict))
-            while(addarchives == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout or addarchives == "":
                 continue
             retval = addarchives
             addarchives = ""
@@ -634,7 +650,8 @@ def archivestream():
                            "start_time": start_time, "end_date": end_date,
                            "end_time": end_time, "job_id": job_id}
             client.publish("archive/delete", json.dumps(archivedict))
-            while(delarchives == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout or delarchives == "":
                 continue
             retval = delarchives
             delarchives = ""
@@ -648,7 +665,8 @@ def archivestream():
         elif request.method == "GET":
             ''' TODO '''
             client.publish("archive/get", "All Archives")
-            while(allarchives == ""):
+            timeout_start = time.time()
+            while time.time() < timeout_start + timeout or allarchives == "":
                 continue
             retval = allarchives
             allarchives = ""
