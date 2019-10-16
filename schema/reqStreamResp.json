@@ -4,7 +4,8 @@
     "description": "[Request Streams] response schema",
     "properties": {
         "info": {
-            "type": "string"
+            "type": "string",
+            "describes": "active of processing"
         },
         "stream_id": {
             "type": "string"

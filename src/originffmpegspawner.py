@@ -8,19 +8,21 @@ import json
 
 
 class Origin():
-    def __init__(self, origin_id, mqtt_ip, mqtt_port):
+    def __init__(self, origin_id, mqtt_ip, mqtt_port, mqtt_uname, mqtt_passwd):
         ''' Init the router '''
         self.origin_id = origin_id
         self.action = "idle"
         self.msg = ""
         self.mqParams = {}
         self.mqParams["url"] = mqtt_ip
-        self.mqParams["port"] = int(mqtt_port)
+        self.mqParams["username"] = mqtt_uname
+        self.mqParams["password"] = mqtt_passwd
+        self.mqParams["port"] = mqtt_port
         self.mqParams["timeout"] = 60
-        self.mqParams["topic"] = [("origin/ffmpeg/dist/respawn", 0),
-                                  ("origin/ffmpeg/stream/spawn", 0),
-                                  ("origin/ffmpeg/dist/spawn", 0),
-                                  ("origin/ffmpeg/respawn", 0)]
+        self.mqParams["topic"] = [("origin/ffmpeg/dist/respawn", 1),
+                                  ("origin/ffmpeg/stream/spawn", 1),
+                                  ("origin/ffmpeg/dist/spawn", 1),
+                                  ("origin/ffmpeg/respawn", 1)]
         self.mqParams["onMessage"] = self.on_message
         self.client = MQTTPubSub(self.mqParams)
 
@@ -41,20 +43,17 @@ class Origin():
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
 
-            else:
-                self.action = "idle"
-                self.msg = ""
-                continue
             self.action = "idle"
             self.msg = ""
-            time.sleep(0.001)
+            time.sleep(0.01)
 
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
-        self.msg = message.payload.decode("utf-8")
-        self.msg = json.loads(self.msg)
-        if self.msg["origin_id"] == self.origin_id:
-            self.action = message.topic.decode("utf-8")
+        self.msg = message.payload
+        msg_dict = json.loads(self.msg)
+        if msg_dict["origin_id"] == self.origin_id:
+            self.action = message.topic
+            print(self.action, self.msg)
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
@@ -64,8 +63,7 @@ class Origin():
                 if not ret:
                     pass
                 elif isinstance(ret, dict):
-                    self.client.publish(ret["topic"],
-                                        json.dumps(ret["msg"]))
+                    self.client.publish(ret["topic"], ret["msg"])
                     time.sleep(0.1)
                 elif isinstance(ret, list):
                     for retDict in ret:
@@ -89,14 +87,17 @@ class DefunctCleaner(threading.Thread):
 def main():
     mqtt_ip = os.environ["LB_IP"]
     mqtt_port = os.environ["MQTT_PORT"]
+    mqtt_uname = os.environ["MQTT_UNAME"]
+    mqtt_passwd = os.environ["MQTT_PASSWD"]
     if mqtt_ip is None or mqtt_port is None:
         print("Error! LB_IP and LB_PORT not set")
         sys.exit(0)
     origin_id = os.environ["ORIGIN_ID"]
-    origin = Origin(origin_id, mqtt_ip, mqtt_port)
+    origin = Origin(origin_id, mqtt_ip, mqtt_port, mqtt_uname, mqtt_passwd)
     t1 = DefunctCleaner()
     t1.setDaemon(True)
     t1.start()
+    origin.client.run()
     origin.router()
 
 

@@ -8,7 +8,7 @@ import threading
 
 
 class OriginKiller():
-    def __init__(self, origin_id, mqtt_ip, mqtt_port):
+    def __init__(self, origin_id, mqtt_ip, mqtt_port, mqtt_uname, mqtt_passwd):
         ''' Init the router '''
         self.origin_id = origin_id
         self.action = "idle"
@@ -17,6 +17,8 @@ class OriginKiller():
         self.mqParams["url"] = mqtt_ip
         self.mqParams["port"] = int(mqtt_port)
         self.mqParams["timeout"] = 60
+        self.mqParams["username"] = mqtt_uname
+        self.mqParams["password"] = mqtt_passwd
         self.mqParams["topic"] = [("origin/ffmpeg/kill", 0),
                                   ("origin/ffmpeg/killall", 0)]
         self.mqParams["onMessage"] = self.on_message
@@ -70,11 +72,14 @@ class OriginKiller():
 def main():
     mqtt_ip = os.environ["LB_IP"]
     mqtt_port = os.environ["MQTT_PORT"]
+    mqtt_uname = os.environ["MQTT_UNAME"]
+    mqtt_passwd = os.environ["MQTT_PASSWD"]
     if mqtt_ip is None or mqtt_port is None:
         print("Error! LB_IP and LB_PORT not set")
         sys.exit(0)
     origin_id = os.environ["ORIGIN_ID"]
-    originKiller = OriginKiller(origin_id, mqtt_ip, mqtt_port)
+    originKiller = OriginKiller(origin_id, mqtt_ip, mqtt_port,
+                                mqtt_uname, mqtt_passwd)
     originKiller.router()
 
 

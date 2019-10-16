@@ -3,7 +3,6 @@ import os
 import sys
 import time
 from MQTTPubSub import MQTTPubSub
-import json
 import threading
 
 '''
@@ -15,7 +14,7 @@ import threading
 class LB():
     ''' Load Balancer Router Class '''
 
-    def __init__(self, mqtt_ip, mqtt_port):
+    def __init__(self, mqtt_ip, mqtt_port, mqtt_uname, mqtt_passwd):
         ''' Init the router '''
         self.action = "idle"
         self.msg = ""
@@ -24,6 +23,8 @@ class LB():
         self.mqParams["url"] = mqtt_ip
         self.mqParams["port"] = int(mqtt_port)
         self.mqParams["timeout"] = 60
+        self.mqParams["username"] = mqtt_uname
+        self.mqParams["password"] = mqtt_passwd
         self.mqParams["topic"] = [("origin/get", 1), ("dist/get", 1),
                                   ("archive/get", 1), ("stream/get", 1),
                                   ("user/get", 1), ("verify/user", 1),
@@ -200,10 +201,12 @@ class LB():
 def main():
     mqtt_ip = os.environ["LB_IP"]
     mqtt_port = os.environ["MQTT_PORT"]
+    mqtt_uname = os.environ["MQTT_UNAME"]
+    mqtt_passwd = os.environ["MQTT_PASSWD"]
     if mqtt_ip is None or mqtt_port is None:
         print("Error! LB_IP and LB_PORT not set")
         sys.exit(0)
-    lb = LB(mqtt_ip, mqtt_port)
+    lb = LB(mqtt_ip, mqtt_port, mqtt_uname, mqtt_passwd)
     lb.client.run()
     lb.router()
 

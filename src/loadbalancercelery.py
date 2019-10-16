@@ -14,7 +14,8 @@ import os
         1. Validation at mongodb
         2. Parameterize celery app parameters
         3. Return json everywhere
-        4. rmtp links are broken (cmd)
+        4. Spawn rtmp dist push as soon as it is added in origin
+
 '''
 
 
@@ -44,7 +45,7 @@ class Table():
 
     def update(self, key, doc):
         res = self.collection.update_one(key, {"$set": doc}, upsert=True)
-        return res.modified_count()
+        return res.modified_count
 
     def findOne(self, doc, args=None):
         res = self.collection.find_one(doc, {"_id": 0})
@@ -185,6 +186,7 @@ def DeleteOrigin(msg):
         TODO: Kill origin streams
     '''
     logger.info("Deleting Origin")
+    msg = json.loads(msg)
     ret = originTable.delete({"origin_id": msg["origin_id"]})
     if ret == 1:
         logger.info("Deleted origin " + msg["origin_id"])
@@ -213,10 +215,9 @@ def UpdateOriginStream(msg):
               Check with pid from OriginFfmpegSpawn
     '''
     msg = json.loads(msg)
-    logger.info(str(msg["stream_id"]) +
-                " stream has been started to origin " + str(msg["to_ip"]))
+    logger.info(msg["stream_id"] +
+                " stream has been started to origin " + msg["to_ip"])
     ffmpegProcsTable.insertOne(msg)
-    time.sleep(0.1)
     return 0
 
 
@@ -320,27 +321,30 @@ def OriginFfmpegDistPush(msg):
         Input: {stream_id: string, cmd: string, rtsp_cmd: string,
                 from_ip: string, to_ip: string}
 
-        Trigger: celeryLBmain.py
+        Trigger: originCelery.py
         Handles: Inserts origin stream info into db upon succesful
                  pull from camera
         Response: HTTPServer
+        TODO: This is called from origin after stream has been pushed
     '''
     msg = json.loads(msg)
     logger.info(msg)
-    logger.info(msg["stream_id"]+" stream push has been started from origin " +
-                msg["from_ip"]+" to distribution "+msg["to_ip"])
+    logger.info(msg["stream_id"] +
+                " stream push has been started from origin " +
+                msg["from_ip"]+" to distribution " + msg["to_ip"])
 
     ffmpegProcsTable.insertOne({"cmd": msg["cmd"], "to_ip": msg["to_ip"],
                                 "from_ip": msg["from_ip"],
                                 "stream_id": msg["stream_id"],
                                 "rtsp_cmd": msg["rtsp_cmd"]})
 
+    ''' TODO: Handle if update didn't happen '''
     streamsTable.update({"stream_id": msg["stream_id"],
                          "origin_ip": msg["from_ip"]},
-                        {"$set": {"dist_ip": msg["to_ip"]}})
-    logger.info(str(msg["cmd"].split()[-2]))
-    time.sleep(0.1)
-    return {"topic": "lbsresponse/rtmp", "msg": str(msg["cmd"].split()[-2])}
+                        {"dist_ip": msg["to_ip"]})
+    ''' TODO: return something else '''
+    # return {"topic": "lbsresponse/rtmp", "msg": str(msg["cmd"].split()[-2])}
+    return 0
 
 
 @app.task
@@ -485,13 +489,12 @@ def RequestStream(msg):
             if (dist["num_clients"] < bestNumClients):
                 bestDist = dist
         dist = bestDist
-        resp = {"origin_id": stream["origin_id"], "origin_ip": stream["origin_ip"],
+        resp = {"origin_id": stream["origin_id"],
+                "origin_ip": stream["origin_ip"],
                 "dist_id": dist["dist_id"], "dist_ip": dist["dist_ip"],
-                "stream_id": stream["stream_id"], "stream_ip": stream["stream_ip"]}
-        userresp = {"stream_id": stream["stream_id"], "rtmp": ffproc["cmd"],
-                    "hls": "http://" + ffproc["to_ip"] +
-                           ":8080/hls/" + stream["stream_id"] + ".m3u8",
-                    "rtsp": ffproc["rtsp_cmd"], "info": "active"}
+                "stream_id": stream["stream_id"],
+                "stream_ip": stream["stream_ip"]}
+        userresp = {"info": "processing"}
 
         return [{"topic": "lbsresponse/rtmp",
                  "msg": json.dumps(userresp)},
@@ -503,12 +506,12 @@ def RequestStream(msg):
 
     elif bool(stream) and bool(ffproc):
         ''' All required conditions to send link are met '''
-        logger.info("Stream " + msg["stream_id"], " already present")
+        logger.info("Stream " + msg["stream_id"] + " already present")
         userresp = {"stream_id": msg["stream_id"],
                     "rtmp": ffproc["cmd"],
                     "hls": "http://" + ffproc["to_ip"] +
                            ":8080/hls/" + msg["stream_id"] + ".m3u8",
-                           "rtsp": ffproc["rtsp_cmd"]}
+                           "rtsp": ffproc["rtsp_cmd"], "info": "active"}
         return {"topic": "lbsresponse/rtmp", "msg": json.dumps(userresp)}
 
 

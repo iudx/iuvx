@@ -19,7 +19,8 @@ import sys
 class Statter():
     """Statter Class to check status of NGINX based FFMPEG streams"""
 
-    def __init__(self, tsDBParams, statPageURL, mqtt_ip, mqtt_port, mqttTopics):
+    def __init__(self, tsDBParams, statPageURL, mqtt_ip, mqtt_port, mqttTopics,
+                 mqtt_uname, mqtt_passwd):
         """ Internal Defs"""
         self.statPageURL = statPageURL
         ''' Registered Streams '''
@@ -43,6 +44,8 @@ class Statter():
         self.mqttServerParams["port"] = mqtt_port
         self.mqttServerParams["timeout"] = 60
         self.mqttServerParams["topic"] = mqttTopics
+        self.mqttServerParams["username"] = mqtt_uname
+        self.mqttServerParams["password"] = mqtt_passwd
         self.mqttServerParams["onMessage"] = self.on_message
         self.mqttc = MQTTPubSub(self.mqttServerParams)
         self.numClients = 0
@@ -243,6 +246,8 @@ if __name__ == "__main__":
     statPageURL = "http://localhost:8080/stat"
     mqtt_ip = os.environ["LB_IP"]
     mqtt_port = os.environ["MQTT_PORT"]
+    mqtt_uname = os.environ["MQTT_UNAME"]
+    mqtt_passwd = os.environ["MQTT_PASSWD"]
     mqttTopics = [("origin/ffmpeg/stream/stat/spawn", 0),
                   ("origin/ffmpeg/kill", 0),
                   ("lb/request/origin/streams", 0),
@@ -250,7 +255,8 @@ if __name__ == "__main__":
     ''' TODO: Parameterize tsdb params '''
     tsDBParams = {"url": "127.0.0.1", "port": 8086,
                   "uname": "root", "pwd": "root", "appName": "statter"}
-    statter = Statter(tsDBParams, statPageURL, mqtt_ip, mqtt_port, mqttTopics)
+    statter = Statter(tsDBParams, statPageURL, mqtt_ip, mqtt_port,
+                      mqttTopics, mqtt_uname, mqtt_passwd)
 
     statter.start()
 

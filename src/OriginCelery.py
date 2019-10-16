@@ -4,13 +4,14 @@ import os
 import time
 import subprocess as sp
 import json
-from celery.utils.log import get_task_logger
+import logging
 sys.path.insert(1, './src')
 
 '''
     originffmpegspawner.py
     Contains all the originServer functions
     TODO:
+        Spawn rtmp dist spawn as soon as it is spawned at origin
 '''
 
 ''' Celery app '''
@@ -19,7 +20,7 @@ app = Celery('originffmpegspawner', backend="redis://localhost/1",
              broker="redis://localhost/1")
 
 ''' Logger '''
-logger = get_task_logger(__name__)
+logger = logging.getLogger(__name__)
 
 ''' Stderr file handler '''
 FNULL = open(os.devnull, 'w')
@@ -36,8 +37,8 @@ def OriginFfmpegSpawn(msg):
                  "stream_ip" represents the
                  IP address for stream playback from the IP camera.
     '''
-    logger.info("Spawning ", msg["stream_id"])
     msg = json.loads(msg)
+    logger.info("Spawning " + msg["stream_id"])
     ''' spawn rtsp push '''
     rtsp_cmd = ["nohup", "/usr/bin/ffmpeg", "-i", msg["stream_ip"],
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
@@ -52,16 +53,16 @@ def OriginFfmpegSpawn(msg):
            "-an", "-vcodec", "copy", "-f", "flv", "rtmp://" +
            str(msg["origin_ip"]).strip() + ":1935/dynamic/" +
            str(msg["stream_id"]).strip(), "&"]
-    logger.info("Executing command ", "".join(cmd))
+    logger.info("Executing command " + "".join(cmd))
     sp.Popen(" ".join(cmd), stdout=FNULL, stderr=FNULL,
              stdin=FNULL, shell=True, preexec_fn=os.setpgrp)
     sp.Popen(" ".join(rtsp_cmd), stdin=FNULL, stdout=FNULL,
              stderr=FNULL, shell=True, preexec_fn=os.setpgrp)
 
-    out = {"cmd": " ".join(cmd), "from_ip": msg["stream_ip"],
+    out = {"cmd": "".join(cmd), "from_ip": msg["stream_ip"],
            "stream_id": msg["stream_id"], "to_ip": msg["origin_ip"],
-           "rtsp_cmd": " ".join(rtsp_cmd)}
-    return {"topic": "db/origin/ffmpeg/stream/spawn", "msg": out}
+           "rtsp_cmd": "".join(rtsp_cmd)}
+    return {"topic": "db/origin/ffmpeg/stream/spawn", "msg": json.dumps(out)}
 
 
 @app.task
@@ -75,8 +76,9 @@ def OriginFfmpegDistSpawn(msg):
                  and distribution NGINX server.
         TODO: Remove RTSP push
     '''
-    logger.info("Spawning FFMPEG push to distribution server ",)
     msg = json.loads(msg)
+    logger.info(type(msg))
+    logger.info("Spawning FFMPEG push to distribution server ")
 
     rtsp_cmd = ["nohup", "/usr/bin/ffmpeg", "-i",
                 "rtmp://" + str(msg["origin_ip"]).strip() +
@@ -100,7 +102,7 @@ def OriginFfmpegDistSpawn(msg):
     out = {"cmd": " ".join(cmd), "from_ip": msg["origin_ip"],
            "stream_id": msg["stream_id"], "to_ip": msg["dist_ip"],
            "rtsp_cmd": " ".join(rtsp_cmd)}
-    return {"topic": "db/origin/ffmpeg/dist/spawn", "msg": out}
+    return {"topic": "db/origin/ffmpeg/dist/spawn", "msg": json.dumps(out)}
 
 
 @app.task
@@ -115,7 +117,7 @@ def OriginFfmpegDistRespawn(msg):
         TODO: Use OriginFfmpegDistSpawn in it's lieu
     '''
     msg = OriginFfmpegDistSpawn(msg)["msg"]
-    return {"topic": "db/origin/ffmpeg/stream/sspawn", "msg": msg}
+    return {"topic": "db/origin/ffmpeg/stream/spawn", "msg": msg}
 
 
 @app.task
@@ -124,6 +126,7 @@ def OriginFfmpegKill(msg):
         Input: [{cmd: string, rtsp_cmd: string}]
         Trigger: originffmpegspawner.py
         Handles: Kills streams
+        TODO
     '''
     for stream in msg:
         logger.info(stream["cmd"].split()[1:-1])
@@ -155,7 +158,7 @@ def OriginFfmpegArchive(msg, length):
         Trigger: originffmpegarchiver.py
         Handles: Archive db info
     '''
-    logger.info("Archiving ", msg["stream_id"])
+    logger.info("Archiving " + msg["stream_id"])
     cmd = ["nohup", "/usr/bin/ffmpeg", "-i",
            "rtmp://" + str(msg["origin_ip"]).strip() +
            ":1935/ dynamic/" + str(msg["stream_id"]).strip(),
