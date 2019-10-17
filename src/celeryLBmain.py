@@ -32,6 +32,7 @@ class LB():
                                   ("db/dist/ffmpeg/respawn", 1),
                                   ("archive/delete", 1), ("archive/add", 1),
                                   ("request/allstreams", 1),
+                                  ("request/origin/streams", 1),
                                   ("db/origin/ffmpeg/respawn", 1),
                                   ("origin/stat", 1), ("dist/stat", 1),
                                   ("origin/add", 1), ("origin/delete", 1),

@@ -6,6 +6,7 @@ sed -i s/#allow_anonymous\ true/allow_anonymous\ true/ /etc/mosquitto/mosquitto.
 /opt/nginx/sbin/nginx
 redis-server --daemonize yes
 mosquitto -d
+nohup influxd > /dev/null 2>&1 &
 # Project and root directories
 PROJ_DIR=/vidiot/src
 

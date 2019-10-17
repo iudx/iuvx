@@ -32,27 +32,29 @@ class Statter():
         """ Origin Server IP Address, currently LAN IP """
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
-        self.origin_IP = str(s.getsockname()[0])
-        self.origin_ID = os.environ["ORIGIN_ID"]
-        if(self.origin_ID is None):
+        self.ORIGIN_IP = str(s.getsockname()[0])
+        self.ORIGIN_ID = os.environ["ORIGIN_ID"]
+        if(self.ORIGIN_ID is None):
             sys.exit(0)
 
         s.close()
         ''' MQTT Backend '''
         self.mqttServerParams = {}
         self.mqttServerParams["url"] = mqtt_ip
-        self.mqttServerParams["port"] = mqtt_port
+        self.mqttServerParams["port"] = int(mqtt_port)
         self.mqttServerParams["timeout"] = 60
         self.mqttServerParams["topic"] = mqttTopics
         self.mqttServerParams["username"] = mqtt_uname
         self.mqttServerParams["password"] = mqtt_passwd
         self.mqttServerParams["onMessage"] = self.on_message
         self.mqttc = MQTTPubSub(self.mqttServerParams)
+        self.mqttc.run()
         self.numClients = 0
         ''' InfluxDB '''
         self.influxClient = InfluxDBClient(
             tsDBParams["url"], tsDBParams["port"],
             tsDBParams["uname"], tsDBParams["pwd"], tsDBParams["appName"])
+        print("Initalization done")
 
     def addNewStream(self, stream_id, stream_ip):
         with self.dictLock:
@@ -69,18 +71,18 @@ class Statter():
             del self.rS[streamId]
 
     def on_message(self, client, userdata, message):
-        msg = str(message.payload.decode("utf-8"))
-        topic = str(message.topic.decode("utf-8"))
+        msg = message.payload
+        topic = message.topic
         msgDict = json.loads(msg)
         print(msgDict)
         try:
             if isinstance(msgDict, list):
                 for stream in msgDict:
-                    if stream["origin_ip"] == self.origin_IP:
+                    if stream["origin_id"] == self.ORIGIN_ID:
                         if topic == "origin/ffmpeg/kill":
                             self.deleteStream(stream["stream_id"])
             else:
-                if msgDict["origin_ip"] == self.origin_IP:
+                if msgDict["origin_id"] == self.ORIGIN_ID:
                     if topic == "origin/ffmpeg/stream/stat/spawn":
                         self.addNewStream(msgDict["stream_id"],
                                           msgDict["stream_ip"])
@@ -96,7 +98,7 @@ class Statter():
                                                   stream["stream_ip"])
                         self.startFlag = True
         except Exception as e:
-            print(e)
+            print("Couldn't decode response", e)
 
     def stat(self):
         while(True):
@@ -109,7 +111,7 @@ class Statter():
                 stats = (stats["rtmp"]["server"]["application"][1]
                               ["live"]["stream"])
             except Exception as e:
-                print(e)
+                print("Couldn't decode response", e)
 
             if isinstance(stats, collections.OrderedDict):
                 statList.append(stats)
@@ -127,7 +129,7 @@ class Statter():
                             self.rS[stat["name"]]["InBW"] = int(stat["bw_in"])
                             self.rS[stat["name"]]["status"] = 1
             except Exception as e:
-                print(e)
+                print("Couldn't read stat ", e)
             time.sleep(0.5)
 
     def resetrevived(self, streamId):
@@ -135,7 +137,7 @@ class Statter():
             try:
                 self.rS[streamId]["revived"] = 0
             except Exception as e:
-                print(e)
+                print("Couldn't  revive ", e)
 
     def checkStat(self):
         while(True):
@@ -160,7 +162,7 @@ class Statter():
                 streamId = stream
                 streamIp = self.rS[stream]["stream_ip"]
                 streamDict = {"stream_ip": streamIp,
-                              "stream_id": streamId, "origin_id": self.origin_ID}
+                              "stream_id": streamId, "origin_id": self.ORIGIN_ID}
                 print("Publishing")
                 print(streamDict)
                 self.mqttc.publish("db/origin/ffmpeg/respawn",
@@ -172,7 +174,7 @@ class Statter():
         while(True):
             ''' TODO: Send status on a per stream basis here '''
             self.mqttc.publish("origin/stat",
-                               json.dumps({"origin_id": self.origin_ID,
+                               json.dumps({"origin_id": self.ORIGIN_ID,
                                            "num_clients": str(self.numClients)}))
             epochTime = int(time.time()) * 1000000000
             self.logDataFlag = False
@@ -208,9 +210,9 @@ class Statter():
             time.sleep(30)
 
     def start(self):
-        self.mqttc.run()
-        time.sleep(0.5)
-        self.mqttc.publish("request/origin/streams", json.dumps({"origin_ip": self.origin_IP}))
+        time.sleep(1)
+        self.mqttc.publish("request/origin/streams", json.dumps({"origin_id": self.ORIGIN_ID}))
+        print("Requesting all streams belonging to ", self.ORIGIN_ID)
         while(self.startFlag is False):
             time.sleep(0.5)
         ''' Start the stat thread '''
@@ -238,7 +240,7 @@ class Statter():
                             ''' For printing '''
                             obj = self.rS[stream]
             except Exception as e:
-                print(e)
+                print("Error in loop ", e)
             time.sleep(2)
 
 
@@ -248,10 +250,10 @@ if __name__ == "__main__":
     mqtt_port = os.environ["MQTT_PORT"]
     mqtt_uname = os.environ["MQTT_UNAME"]
     mqtt_passwd = os.environ["MQTT_PASSWD"]
-    mqttTopics = [("origin/ffmpeg/stream/stat/spawn", 0),
-                  ("origin/ffmpeg/kill", 0),
-                  ("lb/request/origin/streams", 0),
-                  ("origin/ffmpeg/killall", 0)]
+    mqttTopics = [("origin/ffmpeg/stream/stat/spawn", 1),
+                  ("origin/ffmpeg/kill", 1),
+                  ("lb/request/origin/streams", 1),
+                  ("origin/ffmpeg/killall", 1)]
     ''' TODO: Parameterize tsdb params '''
     tsDBParams = {"url": "127.0.0.1", "port": 8086,
                   "uname": "root", "pwd": "root", "appName": "statter"}
