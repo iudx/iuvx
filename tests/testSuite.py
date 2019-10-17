@@ -11,16 +11,16 @@ import pymongo
 
 
 class Vid():
-    def __init__(self, LB_IP, LB_Port, ROOT_uname, ROOT_passwd):
-        self.LB_IP = LB_IP
-        self.LB_Port = LB_Port
-        self.ROOT_uname = ROOT_uname
-        self.ROOT_passwd = ROOT_passwd
-        self.test_cred = {"username": self.ROOT_uname,
-                          "password": self.ROOT_passwd,
+    def __init__(self, HTTP_IP, HTTP_PORT, ROOT_UNAME, ROOT_PASSWD):
+        self.HTTP_IP = HTTP_IP
+        self.HTTP_PORT = HTTP_PORT
+        self.ROOT_UNAME = ROOT_UNAME
+        self.ROOT_PASSWD = ROOT_PASSWD
+        self.test_cred = {"username": self.ROOT_UNAME,
+                          "password": self.ROOT_PASSWD,
                           "accept": "application/json",
                           "Content-Type": "application/json"}
-        self.root_link = "http://" + LB_IP + ":" + LB_Port
+        self.root_link = "http://" + HTTP_IP + ":" + HTTP_PORT
         uname = os.environ["MONGO_INITDB_ROOT_USERNAME"]
         pwd = os.environ["MONGO_INITDB_ROOT_PASSWORD"]
         url = os.environ["MONGO_URL"]
@@ -122,8 +122,8 @@ class VidTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(VidTest, self).__init__(*args, **kwargs)
-        self.LB_IP = os.environ["LB_IP"]
-        self.LB_Port = os.environ["LB_PORT"]
+        self.HTTP_IP = os.environ["LB_IP"]
+        self.HTTP_PORT = os.environ["HTTP_PORT"]
         self.ROOT_uname = os.environ["ROOT_UNAME"]
         self.ROOT_passwd = os.environ["ROOT_PASSWD"]
         self.origin_ip = os.environ["ORIGIN_IP"]
@@ -133,7 +133,7 @@ class VidTest(unittest.TestCase):
         streamsFile = os.environ["STREAMS"]
         self.streams = []
 
-        if None in [self.LB_IP, self.LB_Port,
+        if None in [self.HTTP_IP, self.HTTP_PORT,
                     self.ROOT_uname,
                     self.ROOT_passwd, streamsFile]:
             print("Environment not set")
@@ -143,7 +143,7 @@ class VidTest(unittest.TestCase):
             self.streams = json.load(f)
 
         print("Inited system")
-        self.vs = Vid(self.LB_IP, self.LB_Port,
+        self.vs = Vid(self.HTTP_IP, self.HTTP_PORT,
                       self.ROOT_uname, self.ROOT_passwd)
 
     def test_user(self):

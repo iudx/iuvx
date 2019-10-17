@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 FNULL = open(os.devnull, 'w')
 
 
+''' FFMPEG path '''
+FFMPEG_PATH = os.environ["FFMPEG_PATH"]
+
+
 @app.task
 def OriginFfmpegSpawn(msg):
     '''
@@ -40,7 +44,7 @@ def OriginFfmpegSpawn(msg):
     msg = json.loads(msg)
     logger.info("Spawning " + msg["stream_id"])
     ''' spawn rtsp push '''
-    rtsp_cmd = ["nohup", "/usr/bin/ffmpeg", "-i", msg["stream_ip"],
+    rtsp_cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
                 "tcp", "rtsp://" + msg["origin_ip"].strip() +
                 ":80/dynamic/" + msg["stream_id"].strip(), "&"]
@@ -49,19 +53,19 @@ def OriginFfmpegSpawn(msg):
         TODO: Get PID and send to
         loadbalancercelery.py:UpdateOriginStream()
     '''
-    cmd = ["nohup", "/usr/bin/ffmpeg", "-i", msg["stream_ip"],
+    cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
            "-an", "-vcodec", "copy", "-f", "flv", "rtmp://" +
            str(msg["origin_ip"]).strip() + ":1935/dynamic/" +
            str(msg["stream_id"]).strip(), "&"]
-    logger.info("Executing command " + "".join(cmd))
+    logger.info("Executing command " + " ".join(cmd))
     sp.Popen(" ".join(cmd), stdout=FNULL, stderr=FNULL,
              stdin=FNULL, shell=True, preexec_fn=os.setpgrp)
     sp.Popen(" ".join(rtsp_cmd), stdin=FNULL, stdout=FNULL,
              stderr=FNULL, shell=True, preexec_fn=os.setpgrp)
 
-    out = {"cmd": "".join(cmd), "from_ip": msg["stream_ip"],
+    out = {"cmd": " ".join(cmd), "from_ip": msg["stream_ip"],
            "stream_id": msg["stream_id"], "to_ip": msg["origin_ip"],
-           "rtsp_cmd": "".join(rtsp_cmd)}
+           "rtsp_cmd": " ".join(rtsp_cmd)}
     return {"topic": "db/origin/ffmpeg/stream/spawn", "msg": json.dumps(out)}
 
 
@@ -80,14 +84,14 @@ def OriginFfmpegDistSpawn(msg):
     logger.info(type(msg))
     logger.info("Spawning FFMPEG push to distribution server ")
 
-    rtsp_cmd = ["nohup", "/usr/bin/ffmpeg", "-i",
+    rtsp_cmd = ["nohup", FFMPEG_PATH, "-i",
                 "rtmp://" + str(msg["origin_ip"]).strip() +
                 ":1935/dynamic/" + str(msg["stream_id"]).strip(),
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
                 "tcp", "rtsp://" + str(msg["dist_ip"]).strip() +
                 ":80/dynamic/" + str(msg["stream_id"]).strip(), "&"]
 
-    cmd = ["nohup", "/usr/bin/ffmpeg", "-i", "rtmp://" +
+    cmd = ["nohup", FFMPEG_PATH, "-i", "rtmp://" +
            str(msg["origin_ip"]).strip() +
            ":1935/dynamic/" + str(msg["stream_id"]).strip(),
            "-an", "-vcodec", "copy", "-f", "flv",
@@ -98,7 +102,7 @@ def OriginFfmpegDistSpawn(msg):
              stderr=FNULL, shell=True, preexec_fn=os.setpgrp)
     sp.Popen(" ".join(rtsp_cmd), stdin=FNULL, stdout=FNULL,
              stderr=FNULL, shell=True, preexec_fn=os.setpgrp)
-    logger.info("Execution command ".join(cmd))
+    logger.info("Execution command " + " ".join(cmd))
     out = {"cmd": " ".join(cmd), "from_ip": msg["origin_ip"],
            "stream_id": msg["stream_id"], "to_ip": msg["dist_ip"],
            "rtsp_cmd": " ".join(rtsp_cmd)}
@@ -146,7 +150,7 @@ def OriginFfmpegKillAll():
         Trigger: originffmpegspawner.py
         Handles: Kills all streams
     '''
-    sp.Popen(["pkill", "-f", "/usr/bin/ffmpeg"], stdin=FNULL,
+    sp.Popen(["pkill", "-f", FFMPEG_PATH], stdin=FNULL,
              stdout=FNULL, stderr=FNULL, shell=False)
     return 0
 
@@ -159,7 +163,7 @@ def OriginFfmpegArchive(msg, length):
         Handles: Archive db info
     '''
     logger.info("Archiving " + msg["stream_id"])
-    cmd = ["nohup", "/usr/bin/ffmpeg", "-i",
+    cmd = ["nohup", FFMPEG_PATH, "-i",
            "rtmp://" + str(msg["origin_ip"]).strip() +
            ":1935/ dynamic/" + str(msg["stream_id"]).strip(),
            "-an", "-vcodec", "copy", "-t", str(length), "-f",

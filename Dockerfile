@@ -160,13 +160,12 @@ RUN pip install -r /root/requirements.txt
 COPY --from=build-nginx /opt/nginx /opt/nginx
 COPY --from=build-ffmpeg /usr/local /usr/local
 COPY --from=build-ffmpeg /usr/lib/libfdk-aac.so.2 /usr/lib/libfdk-aac.so.2
+COPY ./configs/nginx.conf /opt/nginx/nginx.conf
+COPY ./configs/stat.xsl /opt/nginx/html/stat.xsl
+RUN mkdir -p /opt/nginx/recording
 
 RUN adduser -D vid
 
-# Add NGINX config and static files.
-# ADD nginx.conf /opt/nginx/nginx.conf
-# RUN mkdir -p /opt/data && mkdir /www
-# ADD static /www/static
 
 EXPOSE 1935
 EXPOSE 80

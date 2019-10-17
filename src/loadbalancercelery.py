@@ -512,7 +512,8 @@ def RequestStream(msg):
         ''' All required conditions to send link are met '''
         logger.info("Stream " + msg["stream_id"] + " already present")
         userresp = {"stream_id": msg["stream_id"],
-                    "rtmp": ffproc["cmd"],
+                    "rtmp": "rtmp://" + ffproc["to_ip"] +
+                    ":1935/dynamic/" + msg["stream_id"],
                     "hls": "http://" + ffproc["to_ip"] +
                            ":8080/hls/" + msg["stream_id"] + ".m3u8",
                            "rtsp": ffproc["rtsp_cmd"], "info": "active"}

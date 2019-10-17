@@ -18,6 +18,7 @@ services:
     ports:
       - "5000:5000"
       - "1935:1935"
+      - "8080:8080"
     restart: on-failure
     env_file: 
       - ./scripts/docker_env.env

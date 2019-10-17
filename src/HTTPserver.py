@@ -25,12 +25,13 @@ logger = logging.getLogger("werkzeug")
 
 ''' Environment Variables '''
 LB_IP = os.environ["LB_IP"]
-LB_PORT = os.environ["LB_PORT"]
+HTTP_IP = os.environ["HTTP_IP"]
+HTTP_PORT = os.environ["HTTP_PORT"]
 MQTT_PORT = os.environ["MQTT_PORT"]
 MQTT_UNAME = os.environ["MQTT_UNAME"]
 MQTT_PASSWD = os.environ["MQTT_PASSWD"]
-if LB_IP is None or LB_PORT is None:
-    logger.info("Error! LB_IP and LB_PORT not set")
+if HTTP_IP is None or HTTP_PORT is None:
+    logger.info("Error! LB_IP and HTTP_PORT not set")
     sys.exit(0)
 
 
@@ -589,6 +590,6 @@ def archivestream():
 
 
 if __name__ == "__main__":
-    logger.info("Starting server on - ", LB_IP + ":" + LB_PORT)
+    logger.info("Starting server on - ", HTTP_IP + ":" + HTTP_PORT)
     client.run()
-    app.run(host=LB_IP, port=int(LB_PORT), debug=True)
+    app.run(host=HTTP_IP, port=int(HTTP_PORT), debug=True)

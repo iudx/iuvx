@@ -2,7 +2,7 @@
 
 touch /etc/mosquitto/passwd
 echo -e "$MQTT_PASSWD\n$MQTT_PASSWD\n" | mosquitto_passwd /etc/mosquitto/passwd $MQTT_UNAME
-sed -i s/#allow_anonymous\ true/allow_anonymous\ true/ /etc/mosquitto/mosquitto.conf \
+sed -i s/#allow_anonymous\ true/allow_anonymous\ true/ /etc/mosquitto/mosquitto.conf
 /opt/nginx/sbin/nginx
 redis-server --daemonize yes
 mosquitto -d
