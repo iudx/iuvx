@@ -69,52 +69,17 @@ class LB():
         ''' Router '''
         while(True):
 
-            if self.action == "request/origin/streams":
-                res = lbc.ReqAllOriginStreams.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
             if self.action == "request/dist/streams":
+                ''' TODO: Use this '''
                 res = lbc.ReqAllDistStreams.delay(self.msg)
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
 
-            if self.action == "origin/add":
-                res = lbc.InsertOrigin.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "origin/delete":
-                res = lbc.DeleteOrigin.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
             if self.action == "origin/stat":
-                ''' TODO: Why no ret '''
                 lbc.OriginStat.delay(self.msg)
-
-            if self.action == "origin/get":
-                res = lbc.GetOrigins.delay()
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
 
             if self.action == "db/origin/ffmpeg/stream/spawn":
                 res = lbc.UpdateOriginStream.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "dist/add":
-                res = lbc.InsertDist.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "dist/delete":
-                res = lbc.DeleteDist.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "dist/get":
-                res = lbc.GetDists.delay()
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
 
@@ -138,58 +103,8 @@ class LB():
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
 
-            if self.action == "stream/add":
-                res = lbc.InsertStream.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "stream/delete":
-                res = lbc.DeleteStream.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "stream/request":
-                res = lbc.RequestStream.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "stream/get":
-                res = lbc.GetStreams.delay()
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "archive/add":
-                res = lbc.ArchiveAdd.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "archive/delete":
-                res = lbc.ArchiveDel.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "archve/get":
-                res = lbc.GetArchives.delay()
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "user/get":
-                res = lbc.GetUsers.delay()
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "user/add":
-                res = lbc.AddUser.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "user/del":
-                res = lbc.DelUser.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "verify/user":
-                res = lbc.VerifyUser.delay(self.msg)
+            if self.action == "request/origin/streams":
+                res = lbc.ReqAllOriginStreams.delay(self.msg)
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
 

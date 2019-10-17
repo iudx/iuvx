@@ -265,6 +265,7 @@ def InsertDist(msg):
         return {"topic": "lbsresponse/dist/add", "msg": True}
     else:
         logger.info("Dist already present" + msg["dist_ip"])
+        return {"topic": "lbsresponse/dist/add", "msg": False}
 
 
 @app.task
@@ -286,7 +287,7 @@ def DeleteDist(msg):
         ffmpegProcsTable.deleteMany({"dist_id": msg["dist_id"]})
         streamsTable.deleteMany({"from_id": msg["dist_id"]})
         return [{"topic": "lbsresponse/dist/del", "msg": True},
-                {"topic": "origin/ffmpeg/kill", "msg": killlist}]
+                {"topic": "origin/ffmpeg/kill", "msg": json.dumps(killlist)}]
     else:
         return {"topic": "lbsresponse/dist/del", "msg": False}
 
@@ -422,18 +423,21 @@ def InsertStream(msg):
                               "origin_id": origin["origin_id"],
                               "stream_id": msg["stream_id"],
                               "stream_ip": msg["stream_ip"]})
-            return [{"topic": "lbsresponse/stream/add", "msg": out},
+            return [{"topic": "lbsresponse/stream/add",
+                     "msg": json.dumps({"info": "inserting"})},
                     {"topic": "origin/ffmpeg/stream/spawn", "msg": out},
                     {"topic": "origin/ffmpeg/stream/stat/spawn", "msg": out}]
         else:
             logger.warning("Stream ID " + msg["stream_id"],
                            " to ", origin["origin_id"],
                            " already present.  Choose different ID.")
-            return {"topic": "lbsresponse/stream/add", "msg": False}
+            return {"topic": "lbsresponse/stream/add",
+                    "msg": json.dumps({"info": "present"})}
     else:
         logger.warning("Stream IP " + msg["stream_ip"],
                        " to ", origin["origin_id"], " already present")
-        return {"topic": "lbsresponse/stream/add", "msg": False}
+        return {"topic": "lbsresponse/stream/add",
+                "msg": json.dumps({"info": "fail"})}
 
 
 @app.task
@@ -589,7 +593,7 @@ def GetArchives():
         TODO: Archives unlike streams belong to a user
     '''
     resp = archivesTable.findAll()
-    return {"topic": "lbsresponse/archive/all", "msg": resp}
+    return {"topic": "lbsresponse/archive/all", "msg": json.dumps(resp)}
 
 
 @app.task
@@ -600,9 +604,9 @@ def GetUsers():
         Handles: Show all users of the server
         Response: HTTPServer.py
     '''
-    users = json.dumps(usersTable.findAll(args={"password": 0}))
+    users = usersTable.findAll(args={"password": 0})
     logger.info("Showing all users")
-    return {"topic": "lbsresponse/user/all", "msg": users}
+    return {"topic": "lbsresponse/user/all", "msg": json.dumps(users)}
 
 
 @app.task
@@ -635,7 +639,7 @@ def DelUser(msg):
     logger.info("Deleting " + msg["username"])
     user = usersTable.findOne({"username": msg["username"]})
     logger.info("User is ... " + str(user))
-    if bool(user):
+    if not bool(user):
         logger.info("User " + msg["username"] + " not present")
         return {"topic": "lbsresponse/user/del", "msg": False}
     else:

@@ -6,20 +6,17 @@ import hashlib
 from flask import Response
 import logging
 import sys
-import time
+import loadbalancercelery as lbc
+import threading
+
 
 '''
     TODO: 
         Add logger
-        (R) Dist
-        (R) Stream
-        (R) ReqStream
-        (R) Auth
-        (N) Timeout instead of while loop
-    Doing:
-        (R) Origin
+        Add Authorization decorator
     Done:
 '''
+
 
 
 ''' Logger utility '''
@@ -37,85 +34,6 @@ if LB_IP is None or LB_PORT is None:
     sys.exit(0)
 
 
-''' Global variables '''
-stream_link = ""
-''' user params '''
-addusers = ""
-delusers = ""
-verified = ""
-allusers = ""
-''' origin params '''
-allorigins = ""
-addorigin = ""
-delorigin = ""
-''' dist params '''
-alldists = ""
-adddists = ""
-deldists = ""
-''' stream params '''
-addstreams = ""
-allstreams = ""
-delstreams = ""
-''' archive params '''
-allarchives = ""
-addarchives = ""
-delarchives = ""
-
-
-''' Seconds '''
-timeout = 5
-
-
-def on_message(client, userdata, message):
-    ''' MQTT Subscribe callback '''
-    '''
-        TODO: make all messages json
-        TODO: Add time out
-    '''
-    global msg, action
-    global addusers, delusers, verified, allusers
-    global allorigins, addorigin, delorigin, alldists
-    global adddists, deldists, addstreams, allstreams
-    global delstreams, allarchives, addarchives, delarchives
-    global stream_link
-    msg = message.payload
-    topic = message.topic
-    print(msg)
-    print(topic)
-    if topic == "lbsresponse/rtmp":
-        stream_link = msg
-    if topic == "lbsresponse/user/add":
-        addusers = msg
-    if topic == "lbsresponse/user/del":
-        delusers = msg
-    if topic == "lbsresponse/verified":
-        verified = msg
-    if topic == "lbsresponse/archive/all":
-        allarchives = msg
-    if topic == "lbsresponse/user/all":
-        allusers = msg
-    if topic == "lbsresponse/origin/all":
-        allorigins = msg
-    if topic == "lbsresponse/dist/all":
-        alldists = msg
-    if topic == "lbsresponse/stream/all":
-        allstreams = msg
-    if topic == "lbsresponse/origin/add":
-        addorigin = msg
-    if topic == "lbsresponse/origin/del":
-        delorigin = msg
-    if topic == "lbsresponse/stream/add":
-        addstreams = msg
-    if topic == "lbsresponse/stream/del":
-        delstreams = msg
-    if topic == "lbsresponse/dist/add":
-        adddists = msg
-    if topic == "lbsresponse/dist/del":
-        deldists = msg
-    if topic == "lbsresponse/archive/add":
-        addarchives = msg
-    if topic == "lbsresponse/archive/del":
-        delarchives = msg
 
 
 ''' MQTT params and client '''
@@ -138,34 +56,40 @@ mqParams["topic"] = [
         ("lbsresponse/archive/all", 0), ("lbsresponse/verified", 0),
         ("lbsresponse/rtmp", 0), ("lbsresponse/user", 0)
         ]
-mqParams["onMessage"] = on_message
 client = MQTTPubSub(mqParams)
+
+
+def monitorTaskResult(res):
+    ''' Celery result callback monitoring thread '''
+    global client
+    ''' Celery task monitor '''
+    while(True):
+        if res.ready():
+            ret = res.get()
+            if not ret:
+                pass
+            elif isinstance(ret, dict):
+                client.publish(ret["topic"],
+                               ret["msg"])
+            elif isinstance(ret, list):
+                for retDict in ret:
+                    client.publish(retDict["topic"],
+                                   retDict["msg"])
+            return ret
+
 
 ''' HTTP App '''
 app = Flask(__name__)
 
 
-
-''' 
-    HTTP Callbacks -
-     1. Create/Delete/Show users
-     2. Create/Delete/Show origin/distribution/streams
-'''
-
-
 def verify_password(username, password):
     ''' Auth '''
-    global verified, timeout
     hashed_password = hashlib.sha512(password).hexdigest()
-    reqdict = {"username": username, "password": hashed_password}
+    msg = {"username": username, "password": hashed_password}
     ''' TODO: don't use mqtt for user authentiaction '''
-    client.publish("verify/user", json.dumps(reqdict))
-    timeout_start = time.time()
-    while time.time() < timeout_start + timeout and verified == "":
-        continue
-    retval = verified
-    verified = ""
-    if retval:
+    res = lbc.VerifyUser.delay(json.dumps(msg))
+    ret = ret = monitorTaskResult(res)
+    if ret["topic"] == "lbsresponse/verified" and ret["msg"] is True:
         return True
     else:
         return False
@@ -176,7 +100,6 @@ def userfunc():
     '''
     Admin related tasks like adding user, deleting user
     '''
-    global addusers, delusers, verified, allusers, timeout
     logger.info("Reached userfunc")
     if request.method == "POST":
         '''
@@ -191,15 +114,11 @@ def userfunc():
         user_name = data["username"]
         user_pass = data["password"]
         hashed_password = hashlib.sha512(user_pass).hexdigest()
-        reqdict = {"username": user_name, "password": hashed_password}
-        ''' TODO: Remove mqtt publish for creating user '''
-        client.publish("user/add", json.dumps(reqdict))
-        timeout_start = time.time()
-        while time.time() < timeout_start + timeout and addusers == "":
-            continue
-        retval = addusers
-        addusers = ""
-        if retval:
+        msg = {"username": user_name, "password": hashed_password}
+        res = lbc.AddUser.delay(json.dumps(msg))
+        ret = monitorTaskResult(res)
+
+        if ret["topic"] == "lbsresponse/user/add" and ret["msg"] is True:
             return Response(json.dumps({}),
                             status=200, mimetype="application/json")
         else:
@@ -219,15 +138,11 @@ def userfunc():
         user_name = data["username"]
         user_pass = data["password"]
         hashed_password = hashlib.sha512(user_pass).hexdigest()
-        reqdict = {"username": user_name, "password": hashed_password}
+        msg = {"username": user_name, "password": hashed_password}
         ''' TODO: Remove mqtt publish for creating user '''
-        client.publish("user/del", json.dumps(reqdict))
-        timeout_start = time.time()
-        while time.time() < timeout_start + timeout and delusers == "":
-            continue
-        retval = delusers
-        delusers = ""
-        if retval:
+        res = lbc.DelUser.delay(json.dumps(msg))
+        ret = monitorTaskResult(res)
+        if ret["topic"] == "lbsresponse/user/del" and ret["msg"] is True:
             return Response(json.dumps({"username":  user_name}),
                             status=204, mimetype="application/json")
         else:
@@ -240,18 +155,10 @@ def userfunc():
             Returns:
                 str: If success - 200 [{"username": "username"},..]
         '''
-        client.publish('user/get', "All users")
-        timeout_start = time.time()
-        while time.time() < timeout_start + timeout and allusers == "":
-            continue
-        retval = allusers
-        allusers = ""
-        if retval:
-            return Response(retval,
-                            status=200, mimetype='application/json')
-        else:
-            return Response(json.dumps({}), status=408,
-                            mimetype='application/json')
+        res = lbc.GetUsers.delay()
+        ret = monitorTaskResult(res)
+        return Response(ret["msg"],
+                        status=200, mimetype='application/json')
 
     else:
         return Response(json.dumps({}), status=405,
@@ -267,42 +174,39 @@ def reqstream():
         Args:
             dict (str): {"stream_id": "xyz"}
         Returns:
-            str: If success - 204 {"username": "username"}
-                 If no content - 404
+                {"info": "processing"} or
+                {"stream_id": "string", "rtmp": "string[uri],
+                 "hls": "string[uri]", "rtsp": "string[uri]",
+                 "info": string}
     '''
     if (verify_password(request.headers["username"],
                         request.headers["password"])):
         logger.info("Stream request received")
-        stream_link = ""
         data = request.get_json(force=True)
         stream_id = data["stream_id"]
         ''' TODO: make schema changes in accordance to schema '''
-        reqdict = {"stream_id": stream_id}
-        client.publish("stream/request", json.dumps(reqdict))
-        ''' TODO: Remove mqtt publish for creating user '''
-        timeout_start = time.time()
-        while time.time() < timeout_start + timeout and stream_link == "":
-            continue
-        retval = stream_link
-        stream_link = ""
-        if retval:
-            ''' TODO: make schema changes in accordance to schema '''
-            return Response(json.dumps({}), status=409, mimetype='application/json')
-        else:
-            return Response(retval,
+        msg = {"stream_id": stream_id}
+        res = lbc.RequestStream.delay(json.dumps(msg))
+        ret = monitorTaskResult(res)
+        if isinstance(ret, list):
+            m = [d for d in ret if d["topic"] == "lbsresponse/rtmp"][0]
+            return Response(m["msg"],
+                            status=200, mimetype="application/json")
+        elif isinstance(ret, dict):
+            return Response(ret["msg"],
                             status=200, mimetype="application/json")
     else:
-        return Response(json.dumps({}), status=403, mimetype='application/json')
+        return Response(json.dumps({}), status=403,
+                        mimetype='application/json')
 
 
 @app.route('/streams', methods=['POST', 'DELETE', 'GET'])
 def stream():
     '''
-    Push/Delete stream to origin server or 
-    Get all streams flowing into origin server
-    Header: {"username": "username", "password": "password"}
+        Push/Delete stream to origin server or 
+        Get all streams flowing into origin server
+        Header: {"username": "username", "password": "password"}
     '''
-    global addstreams, allstreams, delstreams
     ''' TODO: Remove mqtt publish for creating user '''
     if(verify_password(request.headers["username"], request.headers["password"])):
         if request.method == "POST":
@@ -319,20 +223,20 @@ def stream():
             stream_ip = data["stream_ip"]
             stream_id = data["stream_id"]
             logger.info("Added Stream " + str(stream_id))
-            streamadddict = {"stream_id": stream_id, "stream_ip": stream_ip}
-            client.publish("stream/add", json.dumps(streamadddict))
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout and addstreams == "":
-                continue
-            retval = addstreams
-            addstreams = ""
-            print("Insert streammmmmmmmmmmm ", retval)
-            if retval:
-                return Response(json.dumps(retval),
+            msg = {"stream_id": stream_id, "stream_ip": stream_ip}
+            res = lbc.InsertStream.delay(json.dumps(msg))
+            logger.info("Insert Stream sent request ")
+            ret = monitorTaskResult(res)
+            logger.info("Insert Stream got resp")
+
+            if isinstance(ret, list):
+                m = [d for d in ret if d["topic"] == "lbsresponse/stream/add"][0]
+                return Response(m["msg"],
                                 status=200, mimetype="application/json")
-            else:
-                return Response(json.dumps({}),
-                                status=409, mimetype="application/json")
+            elif isinstance(ret, dict):
+                if ret["topic"] == "lbsresponse/stream/add":
+                    return Response(ret["msg"],
+                                    status=200, mimetype="application/json")
 
         elif request.method == "DELETE":
             '''
@@ -348,19 +252,26 @@ def stream():
             stream_id = data["stream_id"]
             logger.info("Deleted Stream " + str(stream_id))
             ''' TODO: make schema changes in accordance to schema '''
-            streamdeldict = {"stream_id": stream_id}
-            client.publish("stream/delete", json.dumps(streamdeldict))
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout and delstreams == "":
-                continue
-            retval = delstreams
-            delstreams = ""
-            if retval:
-                return Response(json.dumps({}),
-                                status=200, mimetype="application/json")
-            else:
-                return Response(json.dumps({}),
-                                status=404, mimetype="application/json")
+            msg = {"stream_id": stream_id}
+            res = lbc.DeleteStream.delay(json.dumps(msg))
+            ret = monitorTaskResult(res)
+
+            if isinstance(ret, list):
+                m = [d for d in ret if d["topic"] == "lbsresponse/stream/del"][0]
+                if(m["msg"] is True):
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=404,
+                                    mimetype="application/json")
+
+            elif isinstance(ret, dict):
+                if ret["msg"] is True:
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=404,
+                                    mimetype="application/json")
 
         elif request.method == "GET":
             '''
@@ -375,22 +286,14 @@ def stream():
                                             ]}
                          If failed - 404 {}
             '''
-            client.publish("stream/get", json.dumps({}))
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout and allstreams == "":
-                continue
-            retval = allstreams
-            allstreams = ""
-            ''' TODO: make schema changes in accordance to schema '''
-            if retval:
-                return Response(retval, status=200, mimetype='application/json')
-            else:
-                return Response(json.dumps({}), status=408, mimetype='application/json')
-        else:
-            return Response(json.dumps({}), status=405, mimetype='application/json')
+            res = lbc.GetStreams.delay()
+            ret = monitorTaskResult(res)
+            return Response(ret["msg"], status=200,
+                            mimetype="application/json")
 
     else:
-        return Response(json.dumps({}), status=403, mimetype='application/json')
+        return Response(json.dumps({}), status=403,
+                        mimetype='application/json')
 
 
 @app.route('/origin', methods=['POST', 'DELETE', 'GET'])
@@ -398,7 +301,6 @@ def origin():
     '''
         Add, delete or show all origin servers
     '''
-    global allorigins, addorigin, delorigin
     if(verify_password(request.headers["username"],
                        request.headers["password"])):
         if request.method == "POST":
@@ -414,22 +316,18 @@ def origin():
             origin_ip = data["origin_ip"]
             origin_id = data["origin_id"]
             logger.info("Added Origin Server " + str(origin_ip))
-            originadddict = {"origin_id": origin_id, "origin_ip": origin_ip,
-                             "num_clients": 0}
-            client.publish("origin/add", json.dumps(originadddict))
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout and addorigin == "":
-                continue
-            retval = addorigin
-            addorigin = ""
-            print("Adding originnnnnnnn")
-            print(retval)
-            if retval is True:
-                return Response(json.dumps({}),
-                                status=200, mimetype="application/json")
-            else:
-                return Response(json.dumps({}), status=409,
-                                mimetype="application/json")
+            msg = {"origin_id": origin_id, "origin_ip": origin_ip,
+                   "num_clients": 0}
+            res = lbc.InsertOrigin.delay(json.dumps(msg))
+            ret = monitorTaskResult(res)
+            if ret["topic"] == "lbsresponse/origin/add":
+                msg = ret["msg"]
+                if msg:
+                    return Response(json.dumps({}),
+                                    status=200, mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=409,
+                                    mimetype="application/json")
 
         elif request.method == "DELETE":
             '''
@@ -443,39 +341,42 @@ def origin():
             data = request.get_json(force=True)
             origin_id = data["origin_id"]
             logger.info("Deleted Origin Server " + str(origin_id))
-            origindeldict = {"origin_id": origin_id}
-            client.publish("origin/delete", json.dumps(origindeldict))
-            while (delorigin == ""):
-                continue
-            retval = delorigin
-            delorigin = ""
-            if retval:
-                return Response(json.dumps({}), status=200, mimetype="application/json")
-            else:
-                return Response(json.dumps({}), status=404, mimetype="application/json")
+            msg = {"origin_id": origin_id}
+            res = lbc.DeleteOrigin.delay(json.dumps(msg))
+            ret = monitorTaskResult(res)
+            if isinstance(ret, list):
+                m = [d for d in ret if d["topic"] == "lbsresponse/origin/del"][0]
+                if(m["msg"] is True):
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=404,
+                                    mimetype="application/json")
+
+            elif isinstance(ret, dict):
+                if ret["msg"] is True:
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=404,
+                                    mimetype="application/json")
 
         elif request.method == "GET":
             '''
                 Get info about all origin servers
                 Returns:
-                    str: If success - 200 [{"origin_ip": "uri-format", "origin_id": "xyz"}]
+                    str: If success - 200 [{"origin_ip": "uri-format",
+                                            "origin_id": "xyz"}]
                          If failed - 404 {}
             '''
-            client.publish("origin/get", "")
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout and allorigins == "":
-                continue
-            retval = allorigins
-            allorigins = ""
-            if retval:
-                ''' TODO: make changes in accordance to schema '''
-                return Response(retval, status=200, mimetype='application/json')
-            else:
-                return Response(json.dumps({}), status=408, mimetype='application/json')
-        else:
-            return Response(json.dumps({}), status=405, mimetype='application/json')
+            res = lbc.GetOrigins.delay()
+            ret = monitorTaskResult(res)
+            return Response(ret["msg"], status=200,
+                            mimetype='application/json')
+
     else:
-        return Response(json.dumps({}), status=403, mimetype='application/json')
+        return Response(json.dumps({}), status=401,
+                        mimetype='application/json')
 
 
 @app.route('/dist', methods=['POST', 'DELETE', 'GET'])
@@ -483,7 +384,6 @@ def dist():
     '''
         Distribution api cb
     '''
-    global alldists, adddists, deldists
     if(verify_password(request.headers["username"], request.headers["password"])):
         if request.method == "POST":
             '''
@@ -498,17 +398,15 @@ def dist():
             dist_ip = data["dist_ip"]
             dist_id = data["dist_id"]
             logger.info("Added Distribution "+str(dist_ip))
-            distadddict = {"dist_id": dist_id, "dist_ip": dist_ip, "num_clients": 0}
-            client.publish("dist/add", json.dumps(distadddict))
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout and adddists == "":
-                continue
-            retval = adddists
-            adddists = ""
-            if retval:
-                return Response(json.dumps({}), status=200, mimetype="application/json")
-            else:
-                return Response(json.dumps({}), status=409, mimetype="application/json")
+            msg = {"dist_id": dist_id, "dist_ip": dist_ip, "num_clients": 0}
+            res = lbc.InsertDist.delay(json.dumps(msg))
+            ret = monitorTaskResult(res)
+            if ret["topic"] == "lbsresponse/dist/add" and ret["msg"] is True:
+                return Response(json.dumps({}), status=200,
+                                mimetype="application/json")
+            elif ret["topic"] == "lbsresponse/dist/add" and ret["msg"] is False:
+                return Response(json.dumps({}), status=406,
+                                mimetype="application/json")
 
         elif request.method == "DELETE":
             '''
@@ -522,50 +420,47 @@ def dist():
             data = request.get_json(force=True)
             dist_id = data["id"]
             logger.info("Deleted Distribution "+str(dist_id))
-            distdeldict = {"dist_id": dist_id}
-            client.publish("dist/delete", json.dumps(distdeldict))
-            while time.time() < timeout_start + timeout and deldists == "":
-                continue
-            retval = deldists
-            deldists = ""
-            if retval:
-                return Response(json.dumps({}),
-                                status=200, mimetype="application/json")
-            else:
-                return Response(json.dumps({}),
-                                status=404, mimetype="application/json")
+            msg = {"dist_id": dist_id}
+            res = lbc.DeleteDist.delay(json.dumps(msg))
+            ret = monitorTaskResult(res)
+            if isinstance(ret, list):
+                m = [d for d in ret if d["topic"] == "lbsresponse/dist/del"][0]
+                if(m["msg"] is True):
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=204,
+                                    mimetype="application/json")
+
+            elif isinstance(ret, dict):
+                if ret["msg"] is True:
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=404,
+                                    mimetype="application/json")
 
         elif request.method == "GET":
             '''
                 Get info about all distribution servers
                 Returns:
-                    str: If success - 200 [{"dist_ip": "uri-format", "dist_id": "xyz"}]
+                    str: If success - 200 [{"dist_ip": "uri-format",
+                                            "dist_id": "xyz"}]
                          If failed - 404 {}
             '''
-            client.publish("dist/get", "")
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout and alldists == "":
-                continue
-            retval = alldists
-            alldists = ""
-            if retval:
-                return Response(retval, status=200, mimetype='application/json')
-            else:
-                logger.log("Distribution", "Operation Failed")
-                return Response(json.dumps({}), status=408, mimetype='application/json')
-        else:
-            logger.log("Distribution", "Request not supported")
-            ''' TODO: make schema changes in accordance to schema '''
-            return Response(json.dumps({"error": "Request not supported"}), status=405, mimetype='application/json')
+            res = lbc.GetDists.delay()
+            ret = monitorTaskResult(res)
+            return Response(ret["msg"], status=200,
+                            mimetype='application/json')
+
     else:
-        logger.log("Distribution", "Invalid Credentials")
-        return Response(json.dumps({}), status=403, mimetype='application/json')
+        return Response(json.dumps({}), status=403,
+                        mimetype='application/json')
 
 
 ''' TODO: Later '''
 @app.route('/archive', methods=['POST', 'DELETE', 'GET'])
 def archivestream():
-    global allarchives, addarchives, delarchives
     if(verify_password(request.headers["username"], request.headers["password"])):
         user_ip = request.remote_addr
         if request.method == "POST":
@@ -587,33 +482,43 @@ def archivestream():
             stream_id = data["stream_id"]
             try:
                 start_date = data["startDate"]
-            except:
+            except Exception as e:
                 start_date = None
             try:
                 end_date = data["endDate"]
-            except:
+            except Exception as e:
                 end_date = None
             try:
                 start_time = data["startTime"]
-            except:
+            except Exception as e:
                 start_time = None
             try:
                 end_time = data["endTime"]
-            except:
+            except Exception as e:
                 end_time = None
             job_id = data["job_id"]
-            archivedict = {"user_ip": user_ip, "stream_id": stream_id, "start_date": start_date,
-                           "start_time": start_time, "end_date": end_date, "end_time": end_time, "job_id": job_id}
-            client.publish("archive/add", json.dumps(archivedict))
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout or addarchives == "":
-                continue
-            retval = addarchives
-            addarchives = ""
-            if retval:
-                return Response(json.dumps({}), status=200, mimetype="application/json")
-            else:
-                return Response(json.dumps({}), status=409, mimetype="application/json")
+            msg = {"user_ip": user_ip, "stream_id": stream_id,
+                   "start_date": start_date,
+                   "start_time": start_time, "end_date": end_date,
+                   "end_time": end_time, "job_id": job_id}
+            res = lbc.ArchiveAdd.delay(json.dumps(msg))
+            ret = monitorTaskResult(res)
+            if isinstance(ret, list):
+                m = [d for d in ret if d["topic"] == "lbsresponse/archive/add"][0]
+                if(m["msg"] is True):
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=404,
+                                    mimetype="application/json")
+
+            elif isinstance(ret, dict):
+                if ret["msg"] is True:
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=404,
+                                    mimetype="application/json")
 
         elif request.method == "DELETE":
             '''
@@ -635,58 +540,52 @@ def archivestream():
             stream_id = data["id"]
             try:
                 start_date = data["start"]
-            except:
+            except Exception as e:
                 start_date = None
             try:
                 end_date = data["end"]
-            except:
+            except Exception as e:
                 end_date = None
             try:
                 start_time = data["sTime"]
-            except:
+            except Exception as e:
                 start_time = None
             try:
                 end_time = data["eTime"]
-            except:
+            except Exception as e:
                 end_time = None
             job_id = data["job"]
-            archivedict = {"user_ip": user_ip, "stream_id": stream_id,
-                           "start_date": start_date,
-                           "start_time": start_time, "end_date": end_date,
-                           "end_time": end_time, "job_id": job_id}
-            client.publish("archive/delete", json.dumps(archivedict))
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout or delarchives == "":
-                continue
-            retval = delarchives
-            delarchives = ""
-            if retval:
-                return Response(json.dumps({}), status=200,
-                                mimetype="application/json")
-            else:
-                return Response(json.dumps({}), status=409,
-                                mimetype="application/json")
+            msg = {"user_ip": user_ip, "stream_id": stream_id,
+                   "start_date": start_date, "start_time": start_time,
+                   "end_date": end_date, "end_time": end_time,
+                   "job_id": job_id}
+            res = lbc.ArchiveDel.delay(json.dumps(msg))
+            ret = monitorTaskResult(res)
+            if isinstance(ret, list):
+                m = [d for d in ret if d["topic"] == "lbsresponse/archive/del"][0]
+                if(m["msg"] is True):
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=204,
+                                    mimetype="application/json")
+
+            elif isinstance(ret, dict):
+                if ret["msg"] is True:
+                    return Response(json.dumps({}), status=200,
+                                    mimetype="application/json")
+                else:
+                    return Response(json.dumps({}), status=404,
+                                    mimetype="application/json")
 
         elif request.method == "GET":
             ''' TODO '''
-            client.publish("archive/get", "All Archives")
-            timeout_start = time.time()
-            while time.time() < timeout_start + timeout or allarchives == "":
-                continue
-            retval = allarchives
-            allarchives = ""
-            if retval:
-                return Response(json.dumps({"success": " Archive Streams Present: " +
-                                            str(retval)}), status=200,
-                                            mimetype='application/json')
-            else:
-                return Response(json.dumps({"error": " Operation Failed"}),
-                                            status=408, mimetype='application/json')
-        else:
-            return Response(json.dumps({"error": "Request not supported"}),
-                                        status=405, mimetype='application/json')
+            res = lbc.GetArchives.delay()
+            ret = monitorTaskResult(res)
+            return Response(json.dumps(ret["msg"]), status=200,
+                            mimetype='application/json')
     else:
-        return Response(json.dumps({"error": "Invalid Credentials"}), status=403, mimetype='application/json')
+        return Response(json.dumps({}), status=403, mimetype='application/json')
 
 
 if __name__ == "__main__":

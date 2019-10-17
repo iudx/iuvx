@@ -57,6 +57,7 @@ class Vid():
         reqLink = self.root_link + "/origin"
         d = json.dumps({"origin_id": origin_id, "origin_ip": origin_ip})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
+        print(resp.status_code)
         return resp.status_code
 
     def deleteOrigin(self, origin_id, origin_ip):
@@ -112,6 +113,7 @@ class Vid():
         reqLink = self.root_link + "/request"
         d = json.dumps({"stream_id": stream_id})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
+        print(resp.json())
         return resp.status_code
 
 
@@ -146,11 +148,11 @@ class VidTest(unittest.TestCase):
 
     def test_user(self):
         print("Testing User creation functions ")
-        vec = [{"username": u, "password": u} for u in ["test1", "test2", "test3"] ] 
+        vec = [{"username": u, "password": u} for u in ["test1", "test2", "test3"]] 
         succ_create = 0.
         succ_get = 0.
         succ_delete = 0.
-        num = 100
+        num = 1
         for n in range(num):
             for v in vec:
                 if self.vs.createUser(v) == 200:
@@ -183,7 +185,6 @@ class VidTest(unittest.TestCase):
             print("Adding stream", stream["id"])
             self.vs.addStream(stream["id"], stream["ip"])
         self.vs.allStreams()
-        raw_input()
         time.sleep(1)
         for stream in self.streams:
             print("Requesting stream", stream)
