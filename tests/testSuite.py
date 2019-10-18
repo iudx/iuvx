@@ -185,11 +185,13 @@ class VidTest(unittest.TestCase):
             print("Adding stream", stream["id"])
             self.vs.addStream(stream["id"], stream["ip"])
         self.vs.allStreams()
-        time.sleep(1)
         for stream in self.streams:
             print("Requesting stream", stream)
             self.vs.reqStream(stream["id"])
-            raw_input()
+        print("Re-requesting")
+        for stream in self.streams:
+            print("Requesting stream", stream)
+            self.vs.reqStream(stream["id"])
 
 
 if __name__ == '__main__':

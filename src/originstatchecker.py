@@ -36,8 +36,8 @@ class Statter():
         self.ORIGIN_ID = os.environ["ORIGIN_ID"]
         if(self.ORIGIN_ID is None):
             sys.exit(0)
-
         s.close()
+
         ''' MQTT Backend '''
         self.mqttServerParams = {}
         self.mqttServerParams["url"] = mqtt_ip
@@ -50,10 +50,12 @@ class Statter():
         self.mqttc = MQTTPubSub(self.mqttServerParams)
         self.mqttc.run()
         self.numClients = 0
+
         ''' InfluxDB '''
         self.influxClient = InfluxDBClient(
             tsDBParams["url"], tsDBParams["port"],
             tsDBParams["uname"], tsDBParams["pwd"], tsDBParams["appName"])
+        self.influxClient.create_database('statter')
         print("Initalization done")
 
     def addNewStream(self, stream_id, stream_ip):
@@ -96,12 +98,17 @@ class Statter():
                             for stream in streamList:
                                 self.addNewStream(stream["stream_id"],
                                                   stream["stream_ip"])
+                                msg = {"stream_id": stream["stream_id"],
+                                       "status": "active"}
+                                self.mqttc.publish("stream/stat",
+                                                   json.dumps(msg))
                         self.startFlag = True
         except Exception as e:
             print("Couldn't decode response", e)
 
     def stat(self):
         while(True):
+            print("Statting")
             req = requests.get(self.statPageURL)
             stats = xd.parse(req.content)
             statList = []
@@ -120,17 +127,30 @@ class Statter():
 
             try:
                 with self.dictLock:
-                    ''' Clear status '''
+                    presentStreams = []
+                    allStreams = self.rS.keys()
                     for stream in self.rS:
                         self.rS[stream]["status"] = 0
                     ''' Update status '''
                     for stat in statList:
                         if stat["name"] in self.rS:
+                            presentStreams.append(stat["name"])
                             self.rS[stat["name"]]["InBW"] = int(stat["bw_in"])
                             self.rS[stat["name"]]["status"] = 1
+                    for missing in list(set(allStreams) - set(presentStreams)):
+                        print("Missing ", missing)
+                        msg = {"stream_id": missing,
+                               "status": "down"}
+                        self.mqttc.publish("stream/stat",
+                                           json.dumps(msg))
+                    for revived in list(set(presentStreams) - set(allStreams)):
+                        print("New ", revived)
+                        msg = {"stream_id": revived, "status": "active"}
+                        self.mqttc.publish("stream/stat",
+                                           json.dumps(msg))
             except Exception as e:
                 print("Couldn't read stat ", e)
-            time.sleep(0.5)
+            time.sleep(10)
 
     def resetrevived(self, streamId):
         with self.dictLock:
@@ -167,15 +187,18 @@ class Statter():
                 print(streamDict)
                 self.mqttc.publish("db/origin/ffmpeg/respawn",
                                    json.dumps(streamDict))
+                msg = {"stream_id": streamId, "status": "down"}
+                self.mqttc.publish("stream/stat", json.dumps(msg))
             time.sleep(1)
 
     def logger(self):
         ''' Replace with publisher here '''
         while(True):
             ''' TODO: Send status on a per stream basis here '''
-            self.mqttc.publish("origin/stat",
-                               json.dumps({"origin_id": self.ORIGIN_ID,
-                                           "num_clients": str(self.numClients)}))
+            msg = json.dumps({"origin_id": self.ORIGIN_ID,
+                              "num_clients": str(self.numClients)})
+            print(msg)
+            self.mqttc.publish("origin/stat", msg)
             epochTime = int(time.time()) * 1000000000
             self.logDataFlag = False
             with self.dictLock:

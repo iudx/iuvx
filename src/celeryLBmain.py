@@ -38,7 +38,7 @@ class LB():
                                   ("origin/add", 1), ("origin/delete", 1),
                                   ("dist/add", 1), ("dist/delete", 1),
                                   ("stream/add", 1), ("stream/delete", 1),
-                                  ("stream/request", 1),
+                                  ("stream/request", 1), ("stream/stat", 1),
                                   ("db/origin/ffmpeg/dist/spawn", 1),
                                   ("db/origin/ffmpeg/stream/spawn", 1)]
         self.mqParams["onMessage"] = self.on_message
@@ -52,19 +52,14 @@ class LB():
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
-        while(True):
-            if res.ready():
-                ret = res.get()
-                if not ret:
-                    pass
-                elif isinstance(ret, dict):
-                    self.client.publish(ret["topic"],
-                                        ret["msg"])
-                elif isinstance(ret, list):
-                    for retDict in ret:
-                        self.client.publish(retDict["topic"],
-                                            retDict["msg"])
-                break
+        ret = res.get()
+        if isinstance(ret, dict):
+            self.client.publish(ret["topic"],
+                                ret["msg"])
+        if isinstance(ret, list):
+            for retDict in ret:
+                self.client.publish(retDict["topic"],
+                                    retDict["msg"])
 
     def router(self):
         ''' Router '''
@@ -106,6 +101,11 @@ class LB():
 
             if self.action == "request/origin/streams":
                 res = lbc.ReqAllOriginStreams.delay(self.msg)
+                threading.Thread(target=self.monitorTaskResult,
+                                 args=(res,)).start()
+
+            if self.action == "stream/stat":
+                res = lbc.StreamStat.delay(self.msg)
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
 

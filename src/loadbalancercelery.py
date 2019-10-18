@@ -98,7 +98,6 @@ originTable = Table(mongoDB, "originTable")
 '''
     {cmd: string, from_ip: string, stream_ip: string,
      to_ip: string, rtsp_cmd: string}
-    col4
 '''
 ffmpegProcsTable = Table(mongoDB, "ffmpegProcsTable")
 
@@ -107,7 +106,6 @@ ffmpegProcsTable = Table(mongoDB, "ffmpegProcsTable")
      origin_ip: string[uri], dist_ip: string[uri]
      status: enum[onboadrding, deleting, active, down]
      }
-    col3
 '''
 streamsTable = Table(mongoDB, "streams")
 
@@ -125,7 +123,7 @@ distTable = Table(mongoDB, "distTable")
 archivesTable = Table(mongoDB, "archivesTable")
 
 '''
-    {}
+    {"username": "string", "password": "string"}
 '''
 usersTable = Table(mongoDB, "usersTable")
 
@@ -344,7 +342,6 @@ def OriginFfmpegDistPush(msg):
                          "origin_ip": msg["from_ip"]},
                         {"dist_ip": msg["to_ip"]})
     ''' TODO: return something else '''
-    # return {"topic": "lbsresponse/rtmp", "msg": str(msg["cmd"].split()[-2])}
     return 0
 
 
@@ -359,8 +356,11 @@ def OriginFfmpegRespawn(msg):
         TODO: Use OriginFfmpegSpawn instead
     '''
     msg = json.loads(msg)
-    logger.info(str(msg)+" should come here only when missing becomes active")
-    return {"topic": "origin/ffmpeg/respawn", "msg": msg}
+    logger.info("Respawning " + msg["stream_id"])
+    logger.info(msg["origin_id"])
+    origin = originTable.findOne({"origin_id": msg["origin_id"]})
+    msg["origin_ip"] = origin["origin_ip"]
+    return {"topic": "origin/ffmpeg/stream/spawn", "msg": json.dumps(msg)}
 
 
 @app.task
@@ -516,7 +516,7 @@ def RequestStream(msg):
                     ":1935/dynamic/" + msg["stream_id"],
                     "hls": "http://" + ffproc["to_ip"] +
                            ":8080/hls/" + msg["stream_id"] + ".m3u8",
-                           "rtsp": ffproc["rtsp_cmd"], "info": "active"}
+                    "info": "active"}
         return {"topic": "lbsresponse/rtmp", "msg": json.dumps(userresp)}
 
 
@@ -530,6 +530,22 @@ def GetStreams():
     '''
     streams = streamsTable.findAll()
     return {"topic": "lbsresponse/stream/all", "msg": json.dumps(streams)}
+
+
+@app.task
+def StreamStat(msg):
+    '''
+        Input: {"stream_id": string, "status": string[up, down]}
+        Trigger: OriginCelery.py
+        Handles: Updates the status of the stream
+    '''
+    msg = json.loads(msg)
+    streamsTable.update({"stream_id": msg["stream_id"]},
+                        {"status": msg["status"]})
+    return 0
+
+
+
 
 
 @app.task
