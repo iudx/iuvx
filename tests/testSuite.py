@@ -24,9 +24,9 @@ class Vid():
         uname = os.environ["MONGO_INITDB_ROOT_USERNAME"]
         pwd = os.environ["MONGO_INITDB_ROOT_PASSWORD"]
         url = os.environ["MONGO_URL"]
-        mongoclient = pymongo.MongoClient("mongodb://" + uname + ":" + pwd +
-                                          "@" + url + ":27017/", connect=False)
-        mongoclient.drop_database("vid-iot")
+        self.mongoclient = pymongo.MongoClient("mongodb://" + uname + ":" + pwd +
+                                               "@" + url + ":27017/", connect=False)
+        self.mongoclient.drop_database("vid-iot")
 
     def createUser(self, user_cred=None):
         ''' Root functions '''
@@ -35,8 +35,7 @@ class Vid():
             resp = requests.post(reqLink, data=json.dumps(user_cred))
         else:
             resp = requests.post(reqLink, data=json.dumps(self.test_cred))
-        print(resp.status_code)
-        return resp.status_code
+        return resp
 
     def deleteUser(self, user_cred=None):
         reqLink = self.root_link + "/user"
@@ -44,77 +43,69 @@ class Vid():
             resp = requests.delete(reqLink, data=json.dumps(user_cred))
         else:
             resp = requests.delete(reqLink, data=json.dumps(self.test_cred))
-        print(resp.status_code)
-        return resp.status_code
+        return resp
 
     def allUsers(self):
         reqLink = self.root_link + "/user"
         resp = requests.get(reqLink)
-        print(resp.json())
-        return len(resp.json())
+        return resp
 
     def addOrigin(self, origin_id, origin_ip):
         reqLink = self.root_link + "/origin"
         d = json.dumps({"origin_id": origin_id, "origin_ip": origin_ip})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
-        print(resp.status_code)
-        return resp.status_code
+        return resp
 
-    def deleteOrigin(self, origin_id, origin_ip):
+    def deleteOrigin(self, origin_id):
         reqLink = self.root_link + "/origin"
         d = json.dumps({"origin_id": origin_id})
         resp = requests.delete(reqLink, data=d, headers=self.test_cred)
-        return resp.status_code
+        return resp
 
     def allOrigin(self):
         reqLink = self.root_link + "/origin"
         resp = requests.get(reqLink, headers=self.test_cred)
-        print(resp.json())
-        return len(resp.json())
+        return resp
 
     def addDist(self, dist_id, dist_ip):
         reqLink = self.root_link + "/dist"
         d = json.dumps({"dist_id": dist_id, "dist_ip": dist_ip})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
-        return resp.status_code
+        return resp
 
-    def deleteDist(self, dist_id, dist_ip):
+    def deleteDist(self, dist_id):
         reqLink = self.root_link + "/dist"
         d = json.dumps({"dist_id": dist_id})
         resp = requests.delete(reqLink, data=d, headers=self.test_cred)
-        return resp.status_code
+        return resp
 
     def allDist(self):
         reqLink = self.root_link + "/dist"
         resp = requests.get(reqLink, headers=self.test_cred)
-        print(resp.json())
-        return resp.status_code
+        return resp
 
     def addStream(self, stream_id, stream_ip):
         reqLink = self.root_link + "/streams"
         d = json.dumps({"stream_id": stream_id, "stream_ip": stream_ip})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
-        print(resp.json())
-        return resp.status_code
+        return resp
 
-    def deleteStream(self, stream_id, stream_ip):
+    def deleteStream(self, stream_id):
         reqLink = self.root_link + "/streams"
-        d = json.dumps({"stream_id": stream_id, "stream_ip": stream_ip})
+        d = json.dumps({"stream_id": stream_id})
         resp = requests.delete(reqLink, data=d, headers=self.test_cred)
-        return resp.status_code
+        return resp
 
     def allStreams(self):
         reqLink = self.root_link + "/streams"
         resp = requests.get(reqLink, headers=self.test_cred)
-        print(resp.json())
-        return resp.status_code
+        return resp
 
     def reqStream(self, stream_id):
         reqLink = self.root_link + "/request"
         d = json.dumps({"stream_id": stream_id})
         resp = requests.post(reqLink, data=d, headers=self.test_cred)
-        print(resp.json())
-        return resp.status_code
+        return resp
 
 
 class VidTest(unittest.TestCase):
@@ -147,7 +138,6 @@ class VidTest(unittest.TestCase):
                       self.ROOT_uname, self.ROOT_passwd)
 
     def test_user(self):
-        print("Testing User creation functions ")
         vec = [{"username": u, "password": u} for u in ["test1", "test2", "test3"]] 
         succ_create = 0.
         succ_get = 0.
@@ -163,35 +153,99 @@ class VidTest(unittest.TestCase):
             for v in vec:
                 if self.vs.deleteUser(v) == 204:
                     succ_delete += 1
-        print("Success of creation", succ_create/num)
-        print("Success of Get", succ_get/num)
-        print("Success of delete", succ_delete/num)
 
     def test_simpleFlow(self):
-        print("Creating user")
-        self.vs.createUser()
-        print("User Created")
-        print("Showing all Users")
-        self.vs.allUsers()
-        print("Adding Origin")
-        self.vs.addOrigin(self.origin_id, self.origin_ip)
-        print("Showing all origins")
-        self.vs.allOrigin()
-        print("Adding dist")
-        self.vs.addDist(self.dist_id, self.dist_ip)
-        print("Showing all dists")
-        self.vs.allDist()
+        '''
+            Forward Pass
+        '''
+
+        ''' Create user '''
+        resp = self.vs.createUser()
+        self.assertEqual(resp.status_code, 200)
+        ''' Show all users (only 1) '''
+        resp = self.vs.allUsers()
+        self.assertEqual(len(resp.json()), 1)
+        self.assertEqual(resp.json()[0],
+                         {"username": self.vs.test_cred["username"]})
+        self.assertEqual(resp.status_code, 200)
+        ''' Add origin server '''
+        resp = self.vs.addOrigin(self.origin_id, self.origin_ip)
+        self.assertEqual(resp.status_code, 200)
+        ''' Show all origin servers '''
+        resp = self.vs.allOrigin()
+        self.assertEqual(resp.json()[0]["origin_ip"], self.origin_ip)
+        self.assertEqual(resp.json()[0]["origin_id"], self.origin_id)
+        ''' Add a dist server '''
+        resp = self.vs.addDist(self.dist_id, self.dist_ip)
+        self.assertEqual(resp.status_code, 200)
+        ''' Show all dists servers '''
+        resp = self.vs.allDist()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()[0]["dist_ip"], self.dist_ip)
+        self.assertEqual(resp.json()[0]["dist_id"], self.dist_id)
+        ''' Add streams '''
         for stream in self.streams:
-            print("Adding stream", stream["id"])
-            self.vs.addStream(stream["id"], stream["ip"])
-        self.vs.allStreams()
+            resp = self.vs.addStream(stream["stream_id"], stream["stream_ip"])
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.json()["info"], "inserting")
+        ''' Show all streams '''
+        resp = self.vs.allStreams()
+        stream_ids = [s["stream_id"] for s in self.streams]
+        resp_streams = [s["stream_id"] for s in resp.json()]
+        self.assertEqual(resp.status_code, 200)
+        for stream in resp_streams:
+            self.assertTrue(stream in stream_ids)
+        ''' Request for stream '''
         for stream in self.streams:
-            print("Requesting stream", stream)
-            self.vs.reqStream(stream["id"])
-        print("Re-requesting")
+            resp = self.vs.reqStream(stream["stream_id"])
+            self.assertEqual(resp.status_code, 200)
+            resp_json = resp.json()
+            self.assertFalse(resp_json["info"] == "unavailable")
+        ''' Optional second request '''
+        # for stream in self.streams:
+        #     self.vs.reqStream(stream["stream_id"])
+
+        '''
+            Reverse Pass
+        '''
+
+        ''' Delete all streams '''
         for stream in self.streams:
-            print("Requesting stream", stream)
-            self.vs.reqStream(stream["id"])
+            resp = self.vs.deleteStream(stream["stream_id"])
+            self.assertEqual(resp.status_code, 200)
+            resp_json = resp.json()
+        ''' Show all streams '''
+        resp = self.vs.allStreams()
+        stream_ids = [s["stream_id"] for s in self.streams]
+        resp_streams = [s["stream_id"] for s in resp.json()]
+        self.assertEqual(resp.status_code, 200)
+        for stream in resp_streams:
+            self.assertFalse(stream in stream_ids)
+        ''' Delete dist server '''
+        resp = self.vs.deleteDist(self.dist_id)
+        self.assertEqual(resp.status_code, 200)
+        ''' Show all dists servers '''
+        resp = self.vs.allDist()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), [])
+        ''' Delete origin server '''
+        resp = self.vs.deleteOrigin(self.origin_id)
+        self.assertEqual(resp.status_code, 200)
+        ''' Show all origin servers '''
+        resp = self.vs.allOrigin()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), [])
+        ''' Delete user '''
+        resp = self.vs.deleteUser()
+        self.assertEqual(resp.status_code, 200)
+        ''' Show all users (0) '''
+        resp = self.vs.allUsers()
+        self.assertEqual(len(resp.json()), 0)
+        self.assertEqual(resp.status_code, 200)
+
+    def tearDown(self):
+        ''' Cleanup '''
+        self.vs.mongoclient.drop_database("vid-iot")
 
 
 if __name__ == '__main__':

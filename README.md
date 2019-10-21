@@ -11,7 +11,7 @@ Distributed Video-IoT framework to support modern demands for high fidelity, hig
 3. Bring up the two containers for the main server (lb) and the database(db). \
 ` docker-compose up lb db`
 4. Exec into the lb container and run the server, either as a daemon or on a tmux session. \
-` docker exec -it vidiot_lb_l` \
+` docker exec -it vid-iot_lb_l` \
 ` cd vidiot ` \
 ` ./scripts/start_all_tmux.sh`
 5. The video server should be running and can be attached to by issuing \

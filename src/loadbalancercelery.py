@@ -72,10 +72,12 @@ class Table():
             return list(self.collection.find({}, arg))
 
     def delete(self, doc):
-        self.collection.delete_one(doc)
+        res = self.collection.delete_one(doc)
+        return res.deleted_count
 
     def deleteMany(self, doc):
-        self.collection.delete_many(doc)
+        res = self.collection.delete_many(doc)
+        return res.deleted_count
 
     def count(self):
         return self.collection.count()
@@ -193,7 +195,7 @@ def DeleteOrigin(msg):
         streamsTable.deleteMany({"from_id": msg["origin_id"]})
         logger.info("Origin Deleted----> ID:" + " ID:"+str(msg["origin_id"]))
         return [{"topic": "lbsresponse/origin/del", "msg": True},
-                {"topic": "origin/ffmpeg/killall", "msg": msg}]
+                {"topic": "origin/ffmpeg/killall", "msg": json.dumps(msg)}]
     else:
         return {"topic": "lbsresponse/origin/del", "msg": False}
 
@@ -398,6 +400,7 @@ def InsertStream(msg):
     for origin in origins:
         if (origin["num_clients"] < bestNumClients):
             bestOrigin = origin
+            bestNumClients = origin["num_clients"]
     origin = bestOrigin
 
     ''' TODO: Add 'status' to the streamsTable '''
@@ -451,12 +454,12 @@ def DeleteStream(msg):
     msg = json.loads(msg)
     killlist = []
     streams = streamsTable.findAll(msg)
-    logger.info("Deleting " + msg["stream_id"], " from", )
+    logger.info("Deleting " + msg["stream_id"])
     if len(streams) is 0:
-        logger.info("Stream " + msg["stream_id"], " not found")
+        logger.info("Stream " + msg["stream_id"] + " not found")
         return {"topic": "lbsresponse/stream/del", "msg": False}
     else:
-        killlist = ffmpegProcsTable.findAll(msg)
+        killlist = json.dumps(ffmpegProcsTable.findAll(msg))
         streamsTable.delete(msg)
         ffmpegProcsTable.deleteMany(msg)
         return [{"topic": "lbsresponse/stream/del", "msg": True},

@@ -1,10 +1,10 @@
 [
     {
-        "id": "iisc_108",
-        "ip": "rtsp://10.18.20.108/h264"
+        "stream_id": "iisc_108",
+        "stream_ip": "rtsp://10.18.20.108/h264"
     },
     {
-        "id": "iisc_107",
-        "ip": "rtsp://10.18.20.107/h264"
+        "stream_id": "iisc_107",
+        "stream_ip": "rtsp://10.18.20.107/h264"
     }
 ]

@@ -145,7 +145,7 @@ def userfunc():
         ret = monitorTaskResult(res)
         if ret["topic"] == "lbsresponse/user/del" and ret["msg"] is True:
             return Response(json.dumps({"username":  user_name}),
-                            status=204, mimetype="application/json")
+                            status=200, mimetype="application/json")
         else:
             return Response(json.dumps({}), status=404,
                             mimetype="application/json")
@@ -249,13 +249,13 @@ def stream():
                          If failed - 404 {}
             '''
             data = request.get_json(force=True)
-            stream_ip = data["stream_ip"]
             stream_id = data["stream_id"]
             logger.info("Deleted Stream " + str(stream_id))
             ''' TODO: make schema changes in accordance to schema '''
             msg = {"stream_id": stream_id}
             res = lbc.DeleteStream.delay(json.dumps(msg))
             ret = monitorTaskResult(res)
+            print(ret)
 
             if isinstance(ret, list):
                 m = [d for d in ret if d["topic"] == "lbsresponse/stream/del"][0]
@@ -321,14 +321,12 @@ def origin():
                    "num_clients": 0}
             res = lbc.InsertOrigin.delay(json.dumps(msg))
             ret = monitorTaskResult(res)
-            if ret["topic"] == "lbsresponse/origin/add":
-                msg = ret["msg"]
-                if msg:
-                    return Response(json.dumps({}),
-                                    status=200, mimetype="application/json")
-                else:
-                    return Response(json.dumps({}), status=409,
-                                    mimetype="application/json")
+            if ret["topic"] == "lbsresponse/origin/add" and ret["msg"] is True:
+                return Response(json.dumps({}),
+                                status=200, mimetype="application/json")
+            else:
+                return Response(json.dumps({}), status=409,
+                                mimetype="application/json")
 
         elif request.method == "DELETE":
             '''
@@ -419,11 +417,12 @@ def dist():
                          If failed - 404 {}
             '''
             data = request.get_json(force=True)
-            dist_id = data["id"]
-            logger.info("Deleted Distribution "+str(dist_id))
+            dist_id = data["dist_id"]
+            logger.info("Deleted Distribution " + str(dist_id))
             msg = {"dist_id": dist_id}
             res = lbc.DeleteDist.delay(json.dumps(msg))
             ret = monitorTaskResult(res)
+            print(ret)
             if isinstance(ret, list):
                 m = [d for d in ret if d["topic"] == "lbsresponse/dist/del"][0]
                 if(m["msg"] is True):
