@@ -426,6 +426,27 @@ def InsertStream(msg):
                               "origin_id": origin["origin_id"],
                               "stream_id": msg["stream_id"],
                               "stream_ip": msg["stream_ip"]})
+            #####################################################################
+            #Ab: Multi-Dist-Server-Mode Changes
+            #The following logic for spawning from origin-dist should anyway
+            #be moved from Request to this place for multi-dist-server-mode
+            #For multiple distribution servers, issue origin/ffmpeg/dist/ spawn 
+            #origin/ffmpeg/dist/stat here with the appropriate params
+            # if (0)
+            #   #Choose the distribution server to which origin should spawn
+            #   dists = choose_dists_to spawn()
+            #   for dist in dists:
+            #     resp = {"origin_id": stream["origin_id"],
+            #             "origin_ip": stream["origin_ip"],
+            #             "dist_id": dist["dist_id"], "dist_ip": dist["dist_ip"],
+            #             "stream_id": stream["stream_id"],
+            #             "stream_ip": stream["stream_ip"]}
+            #    #Append to the return command the following 
+            #     dist_spawn_msg =  {"topic": "origin/ffmpeg/dist/spawn",
+            #              "msg": json.dumps(resp)}
+            #     dist_stat_spawn_msg =  {"topic": "origin/ffmpeg/dist/stat/spawn",
+            #              "msg": json.dumps(resp)}
+            #####################################################################
             return [{"topic": "lbsresponse/stream/add",
                      "msg": json.dumps({"info": "inserting"})},
                     {"topic": "origin/ffmpeg/stream/spawn", "msg": out},
@@ -468,6 +489,42 @@ def DeleteStream(msg):
 
 @app.task
 def RequestStream(msg):
+    '''
+        Input: {stream_id: string}
+        Trigger: celeryLBmain.py
+        Handles: Gives the user a stream from the distribution server
+        Response: HTTPServer.py
+        TODO: Spawn stream irrespective of user asking for it
+    '''
+    msg = json.loads(msg)
+
+    stream = streamsTable.findOne(msg)
+    #Not required for same-origin-dist-mode
+    #ffproc = ffmpegProcsTable.findOne(msg)
+
+    if not bool(stream):
+        ''' Steram not present at the origin server '''
+        logger.error("Stream not present")
+        return {"topic": "lbsresponse/rtmp",
+                "msg": json.dumps({"info": "unavailable"})}
+    elif (stream["status"] != "active"):
+        ''' Steram present but not active at the origin server '''
+        logger.error("Stream not active")
+        return {"topic": "lbsresponse/rtmp",
+                "msg": json.dumps({"info": "not active"})}
+    else :  
+        ''' All required conditions to send link are met '''
+        logger.info("Stream " + msg["stream_id"] + " already present")
+        userresp = {"stream_id": msg["stream_id"],
+                    "rtmp": "rtmp://" + stream["origin_ip"] +
+                    ":1935/dynamic/" + msg["stream_id"],
+                    "hls": "http://" + stream["origin_ip"] +
+                           ":8080/hls/" + msg["stream_id"] + ".m3u8",
+                    "info": "active"}
+        return {"topic": "lbsresponse/rtmp", "msg": json.dumps(userresp)}
+
+@app.task
+def RequestStreamMultiDist(msg):
     '''
         Input: {stream_id: string}
         Trigger: celeryLBmain.py
@@ -521,6 +578,7 @@ def RequestStream(msg):
                            ":8080/hls/" + msg["stream_id"] + ".m3u8",
                     "info": "active"}
         return {"topic": "lbsresponse/rtmp", "msg": json.dumps(userresp)}
+
 
 
 @app.task
