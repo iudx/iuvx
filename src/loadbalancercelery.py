@@ -463,6 +463,20 @@ def InsertStream(msg):
         return {"topic": "lbsresponse/stream/add",
                 "msg": json.dumps({"info": "fail"})}
 
+@app.task
+def DeleteStreamFromDB(msg):
+    '''
+        Input: One or more rows from ffmpegProcsTable Table
+        Trigger: celeryLBmain.py
+        Handles: delete entry for a stream from streamsTable and ffmpegProcsTable
+    '''
+    msg = json.loads(msg)
+    #All items in the msg list should have the same stream_id   
+    streamid = {"stream_id": msg[0]["stream_id"]}
+    logger.info("Deleted Stream " + msg["stream_id"] + " from streamsTable and ffmpegProcTable")
+    streamsTable.delete(streamid)
+    ffmpegProcsTable.deleteMany(streamid)
+    return 0
 
 @app.task
 def DeleteStream(msg):
@@ -481,8 +495,14 @@ def DeleteStream(msg):
         return {"topic": "lbsresponse/stream/del", "msg": False}
     else:
         killlist = json.dumps(ffmpegProcsTable.findAll(msg))
-        streamsTable.delete(msg)
-        ffmpegProcsTable.deleteMany(msg)
+        #########################################################
+        #Ab: Changes
+        # The entries should be removed from the table after
+        # killing the ffmpeg processes
+        #########################################################
+        
+        #streamsTable.delete(msg)
+        #ffmpegProcsTable.deleteMany(msg)
         return [{"topic": "lbsresponse/stream/del", "msg": True},
                 {"topic": "origin/ffmpeg/kill", "msg": killlist}]
 
@@ -508,7 +528,7 @@ def RequestStream(msg):
         return {"topic": "lbsresponse/rtmp",
                 "msg": json.dumps({"info": "unavailable"})}
     elif (stream["status"] != "active"):
-        ''' Steram present but not active at the origin server '''
+        ''' Stream present but not active at the origin server '''
         logger.error("Stream not active")
         return {"topic": "lbsresponse/rtmp",
                 "msg": json.dumps({"info": "not active"})}

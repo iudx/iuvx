@@ -140,7 +140,8 @@ def OriginFfmpegKill(msg):
         sp.Popen(["pkill", "-f", " ".join(stream["rtsp_cmd"].split()[1:-1])],
                  stdin=FNULL, stdout=FNULL, stderr=FNULL, shell=False)
         time.sleep(1)
-    return 0
+
+    return {"topic": "db/origin/ffmpeg/stream/delete", "msg": msg}
 
 
 @app.task

@@ -79,6 +79,11 @@ class LB():
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
 
+            if self.action == "db/origin/ffmpeg/stream/delete":
+                res = lbc.DeleteStreamFromDB.delay(self.msg)
+                threading.Thread(target=self.monitorTaskResult,
+                                 args=(res,)).start()
+
             if self.action == "dist/stat":
                 ''' TODO: Why no ret '''
                 lbc.DistStat.delay(self.msg)
