@@ -19,14 +19,17 @@ class OriginKiller():
         self.mqParams["timeout"] = 60
         self.mqParams["username"] = mqtt_uname
         self.mqParams["password"] = mqtt_passwd
-        self.mqParams["topic"] = [("origin/ffmpeg/kill", 0),
-                                  ("origin/ffmpeg/killall", 0)]
+        self.mqParams["topic"] = [("origin/ffmpeg/kill", 1),
+                                  ("origin/ffmpeg/killall", 1)]
         self.mqParams["onMessage"] = self.on_message
         self.client = MQTTPubSub(self.mqParams)
+        self.client.run()
 
     def router(self):
         while(True):
             if self.action == "origin/ffmpeg/kill":
+                print(self.msg)
+                print(self.action)
                 res = oc.OriginFfmpegKill.delay(self.msg)
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
@@ -48,7 +51,7 @@ class OriginKiller():
         ''' MQTT Callback function '''
         self.msg = message.payload.decode("utf-8")
         self.msg = json.loads(self.msg)
-        if self.msg["origin_id"] == self.origin_id:
+        if self.msg["to_ip"] == self.origin_id:
             self.action = message.topic.decode("utf-8")
 
     def monitorTaskResult(self, res):

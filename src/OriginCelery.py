@@ -132,6 +132,8 @@ def OriginFfmpegKill(msg):
         Handles: Kills streams
         TODO
     '''
+    logger.info("Kill reached")
+    logger.info(msg)
     for stream in msg:
         logger.info(stream["cmd"].split()[1:-1])
         sp.Popen(["pkill", "-f", " ".join(stream["cmd"].split()[1:-1])],

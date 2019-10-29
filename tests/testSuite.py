@@ -214,6 +214,7 @@ class VidTest(unittest.TestCase):
             resp = self.vs.deleteStream(stream["stream_id"])
             self.assertEqual(resp.status_code, 200)
             resp_json = resp.json()
+        raw_input()
         ''' Show all streams '''
         resp = self.vs.allStreams()
         stream_ids = [s["stream_id"] for s in self.streams]
@@ -230,6 +231,8 @@ class VidTest(unittest.TestCase):
         self.assertEqual(resp.json(), [])
         ''' Delete origin server '''
         resp = self.vs.deleteOrigin(self.origin_id)
+        print(resp.json())
+        raw_input()
         self.assertEqual(resp.status_code, 200)
         ''' Show all origin servers '''
         resp = self.vs.allOrigin()

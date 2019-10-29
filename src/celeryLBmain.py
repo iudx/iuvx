@@ -40,7 +40,8 @@ class LB():
                                   ("stream/add", 1), ("stream/delete", 1),
                                   ("stream/request", 1), ("stream/stat", 1),
                                   ("db/origin/ffmpeg/dist/spawn", 1),
-                                  ("db/origin/ffmpeg/stream/spawn", 1)]
+                                  ("db/origin/ffmpeg/stream/spawn", 1),
+                                  ("db/origin/ffmpeg/stream/delete", 1)]
         self.mqParams["onMessage"] = self.on_message
         self.client = MQTTPubSub(self.mqParams)
 
@@ -80,6 +81,8 @@ class LB():
                                  args=(res,)).start()
 
             if self.action == "db/origin/ffmpeg/stream/delete":
+                print(self.action)
+                print(self.msg)
                 res = lbc.DeleteStreamFromDB.delay(self.msg)
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()

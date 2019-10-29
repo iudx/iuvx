@@ -489,12 +489,16 @@ def DeleteStream(msg):
     msg = json.loads(msg)
     killlist = []
     streams = streamsTable.findAll(msg)
+    logger.info("Streams in delete stream are")
+    logger.info(streams)
     logger.info("Deleting " + msg["stream_id"])
     if len(streams) is 0:
         logger.info("Stream " + msg["stream_id"] + " not found")
         return {"topic": "lbsresponse/stream/del", "msg": False}
     else:
         killlist = json.dumps(ffmpegProcsTable.findAll(msg))
+        logger.info("Killlist")
+        logger.info(killlist)
         #########################################################
         #Ab: Changes
         # The entries should be removed from the table after
