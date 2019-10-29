@@ -39,20 +39,19 @@ class OriginKiller():
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
 
-            else:
-                self.action = "idle"
-                self.msg = ""
-                continue
             self.action = "idle"
             self.msg = ""
             time.sleep(0.001)
 
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
-        self.msg = message.payload.decode("utf-8")
-        self.msg = json.loads(self.msg)
-        if self.msg["to_ip"] == self.origin_id:
-            self.action = message.topic.decode("utf-8")
+        self.msg = message.payload
+        msg_dict = json.loads(self.msg)
+        print(msg_dict)
+        print(self.origin_id)
+        if msg_dict[0]["origin_id"] == self.origin_id:
+            self.action = message.topic
+            print(self.action)
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''

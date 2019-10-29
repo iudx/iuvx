@@ -208,6 +208,7 @@ class VidTest(unittest.TestCase):
         '''
             Reverse Pass
         '''
+        raw_input()
 
         ''' Delete all streams '''
         for stream in self.streams:

@@ -64,7 +64,7 @@ def OriginFfmpegSpawn(msg):
              stderr=FNULL, shell=True, preexec_fn=os.setpgrp)
 
     out = {"cmd": " ".join(cmd), "from_ip": msg["stream_ip"],
-           "stream_id": msg["stream_id"], "to_ip": msg["origin_ip"],
+           "stream_id": msg["stream_id"], "to_ip": msg["origin_ip"], "origin_id": msg["origin_id"],
            "rtsp_cmd": " ".join(rtsp_cmd)}
     return {"topic": "db/origin/ffmpeg/stream/spawn", "msg": json.dumps(out)}
 
@@ -132,10 +132,11 @@ def OriginFfmpegKill(msg):
         Handles: Kills streams
         TODO
     '''
+    msg = json.loads(msg)
     logger.info("Kill reached")
     logger.info(msg)
     for stream in msg:
-        logger.info(stream["cmd"].split()[1:-1])
+        logger.info(stream["cmd"])
         sp.Popen(["pkill", "-f", " ".join(stream["cmd"].split()[1:-1])],
                  stdin=FNULL, stdout=FNULL, stderr=FNULL, shell=False)
         time.sleep(1)

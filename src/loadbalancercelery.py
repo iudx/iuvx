@@ -470,10 +470,15 @@ def DeleteStreamFromDB(msg):
         Trigger: celeryLBmain.py
         Handles: delete entry for a stream from streamsTable and ffmpegProcsTable
     '''
+    logger.info(type(msg))
+    logger.info(msg)
     msg = json.loads(msg)
+
     #All items in the msg list should have the same stream_id   
+ 
+    logger.info(type(msg))
     streamid = {"stream_id": msg[0]["stream_id"]}
-    logger.info("Deleted Stream " + msg["stream_id"] + " from streamsTable and ffmpegProcTable")
+    logger.info("Deleted Stream " + str(streamid) + " from streamsTable and ffmpegProcTable")
     streamsTable.delete(streamid)
     ffmpegProcsTable.deleteMany(streamid)
     return 0
