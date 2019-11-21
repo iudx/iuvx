@@ -193,52 +193,53 @@ class VidTest(unittest.TestCase):
         stream_ids = [s["stream_id"] for s in self.streams]
         resp_streams = [s["stream_id"] for s in resp.json()]
         self.assertEqual(resp.status_code, 200)
+        print("All streams: ", resp_streams)
+        raw_input()
         for stream in resp_streams:
             self.assertTrue(stream in stream_ids)
         ''' Request for stream '''
         for stream in self.streams:
             resp = self.vs.reqStream(stream["stream_id"])
+            print(resp.json())
             self.assertEqual(resp.status_code, 200)
             resp_json = resp.json()
             self.assertFalse(resp_json["info"] == "unavailable")
-        ''' Optional second request '''
-        # for stream in self.streams:
-        #     self.vs.reqStream(stream["stream_id"])
 
+        raw_input()
         '''
             Reverse Pass
         '''
-        raw_input()
 
         ''' Delete all streams '''
         for stream in self.streams:
+            print("Deleting ", stream["stream_id"])
             resp = self.vs.deleteStream(stream["stream_id"])
             self.assertEqual(resp.status_code, 200)
             resp_json = resp.json()
         raw_input()
         ''' Show all streams '''
-        resp = self.vs.allStreams()
-        stream_ids = [s["stream_id"] for s in self.streams]
-        resp_streams = [s["stream_id"] for s in resp.json()]
-        self.assertEqual(resp.status_code, 200)
-        for stream in resp_streams:
-            self.assertFalse(stream in stream_ids)
+        #resp = self.vs.allStreams()
+        #stream_ids = [s["stream_id"] for s in self.streams]
+        #resp_streams = [s["stream_id"] for s in resp.json()]
+        #self.assertEqual(resp.status_code, 200)
+        #for stream in resp_streams:
+        #    self.assertFalse(stream in stream_ids)
         ''' Delete dist server '''
-        resp = self.vs.deleteDist(self.dist_id)
-        self.assertEqual(resp.status_code, 200)
+        #resp = self.vs.deleteDist(self.dist_id)
+        #self.assertEqual(resp.status_code, 200)
         ''' Show all dists servers '''
-        resp = self.vs.allDist()
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), [])
+        #resp = self.vs.allDist()
+        #self.assertEqual(resp.status_code, 200)
+        #self.assertEqual(resp.json(), [])
         ''' Delete origin server '''
-        resp = self.vs.deleteOrigin(self.origin_id)
-        print(resp.json())
-        raw_input()
-        self.assertEqual(resp.status_code, 200)
+        #resp = self.vs.deleteOrigin(self.origin_id)
+        #print(resp.json())
+        #raw_input()
+        #self.assertEqual(resp.status_code, 200)
         ''' Show all origin servers '''
-        resp = self.vs.allOrigin()
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), [])
+        #resp = self.vs.allOrigin()
+        #self.assertEqual(resp.status_code, 200)
+        #self.assertEqual(resp.json(), [])
         ''' Delete user '''
         resp = self.vs.deleteUser()
         self.assertEqual(resp.status_code, 200)

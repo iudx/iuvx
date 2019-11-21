@@ -58,11 +58,13 @@ class Statter():
         self.influxClient.create_database('statter')
         print("Initalization done")
 
-    def addNewStream(self, stream_id, stream_ip):
+    #def addNewStream(self, stream_id, stream_ip):
+    def addNewStream(self, stream_id, stream_ip, dbStatus):
         with self.dictLock:
             print("Adding Stream \t" + str(stream_id))
             self.rS[stream_id] = {"stream_ip": stream_ip,
                                   "status": 1,
+                                  "dbStatus": dbStatus,
                                   "revived": 0,
                                   "Timer": None,
                                   "InBW": 0}
@@ -87,7 +89,8 @@ class Statter():
                 if msgDict["origin_id"] == self.ORIGIN_ID:
                     if topic == "origin/ffmpeg/stream/stat/spawn":
                         self.addNewStream(msgDict["stream_id"],
-                                          msgDict["stream_ip"])
+                                          msgDict["stream_ip"], "onboarding")
+                        #self.addNewStream(msgDict["stream_id"], msgDict["stream_ip"])
                     if topic == "origin/ffmpeg/killall":
                         with self.dictLock:
                             self.rS = {}
@@ -96,12 +99,13 @@ class Statter():
                         if (msgDict["stream_list"]):
                             streamList = msgDict["stream_list"]
                             for stream in streamList:
-                                self.addNewStream(stream["stream_id"],
-                                                  stream["stream_ip"])
-                                msg = {"stream_id": stream["stream_id"],
-                                       "status": "active"}
-                                self.mqttc.publish("stream/stat",
-                                                   json.dumps(msg))
+                                #self.addNewStream(stream["stream_id"], stream["stream_ip"])
+                                self.addNewStream(stream["stream_id"], stream["stream_ip"], stream["status"])
+                                #Abhay: Why do we need to send a stream/stat message here ?
+                                #msg = {"stream_id": stream["stream_id"],
+                                #       "status": "active"}
+                                #self.mqttc.publish("stream/stat",
+                                #                   json.dumps(msg))
                         self.startFlag = True
         except Exception as e:
             print("Couldn't decode response", e)
@@ -129,20 +133,47 @@ class Statter():
                 with self.dictLock:
                     presentStreams = []
                     allStreams = self.rS.keys()
+                    print("Allstreams ",allStreams)
+                    #print("Stat List ", statList)
                     for stream in self.rS:
                         self.rS[stream]["status"] = 0
+        
                     ''' Update status '''
-                    for stat in statList:
-                        if stat["name"] in self.rS:
-                            presentStreams.append(stat["name"])
-                            self.rS[stat["name"]]["InBW"] = int(stat["bw_in"])
-                            self.rS[stat["name"]]["status"] = 1
+                    if isinstance(statList, list):
+                        for stat in statList:
+                            try: 
+                                if stat["name"] in self.rS:
+                                    presentStreams.append(stat["name"])
+                                    self.rS[stat["name"]]["InBW"] = int(stat["bw_in"])
+                                    self.rS[stat["name"]]["status"] = 1
+                                    print(self.rS[stat["name"]]["dbStatus"])
+                                    #Ab: Found an active stream which in dB shows "down" or "onboarding"
+                                    #    Send message to dB to update the status
+                                    if (self.rS[stat["name"]]["dbStatus"] == "down" or 
+                                             self.rS[stat["name"]]["dbStatus"] == "onboarding"):
+                                        print("Found down/onboarding stream that is active")
+                                        #Update the status in dB
+                                        msg = {"stream_id": stat["name"], "status": "active"}
+                                        print(json.dumps(msg))
+                                        self.mqttc.publish("stream/stat", json.dumps(msg))
+
+                            except Exception as e:
+                                print("No name in stat, error message ",e)
+                    print("Present Streams ", set(presentStreams))
                     for missing in list(set(allStreams) - set(presentStreams)):
                         print("Missing ", missing)
                         msg = {"stream_id": missing,
                                "status": "down"}
                         self.mqttc.publish("stream/stat",
                                            json.dumps(msg))
+                        
+                        print(self.rS[missing]['stream_ip'])
+                        out = json.dumps({"origin_ip": self.ORIGIN_IP,
+                                          "origin_id": self.ORIGIN_ID,
+                                          "stream_id": missing,
+                                          "stream_ip": self.rS[missing]["stream_ip"]})
+                        self.mqttc.publish("origin/ffmpeg/stream/spawn", out)
+                    #for revived in list(set(presentStreams) - set(allStreams)):
                     for revived in list(set(presentStreams) - set(allStreams)):
                         print("New ", revived)
                         msg = {"stream_id": revived, "status": "active"}
@@ -243,13 +274,13 @@ class Statter():
         self.statThread.daemon = True
         self.statThread.start()
         ''' Start checker '''
-        self.checkThread = threading.Thread(target=self.checkStat)
-        self.checkThread.daemon = True
-        self.checkThread.start()
+        #self.checkThread = threading.Thread(target=self.checkStat)
+        #self.checkThread.daemon = True
+        #self.checkThread.start()
         ''' Missing Publisher '''
-        self.pubThread = threading.Thread(target=self.pub)
-        self.pubThread.daemon = True
-        self.pubThread.start()
+        #self.pubThread = threading.Thread(target=self.pub)
+        #self.pubThread.daemon = True
+        #self.pubThread.start()
         ''' Logger '''
         self.loggerThread = threading.Thread(target=self.logger)
         self.loggerThread.daemon = True
