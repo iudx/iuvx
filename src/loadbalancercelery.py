@@ -49,7 +49,7 @@ class Table():
 
     def findOne(self, doc, args=None):
         res = self.collection.find_one(doc, {"_id": 0})
-        print(res)
+        #print(res)
         logger.info(res)
         if not bool(res):
             return {}
@@ -154,15 +154,24 @@ def InsertOrigin(msg):
     '''
     logger.info("Inserting Origin")
     msg = json.loads(msg)
-    ret = originTable.insertOne(msg)
-    if ret == 1:
-        logger.info("Added origin " + msg["origin_id"])
-        return {"topic": "lbsresponse/origin/add", "msg": True}
+    
+    if not bool(originTable.findOne({"origin_ip": msg["origin_ip"]})): 
+        o =  originTable.findOne({"origin_id": msg["origin_id"]})
+        if not bool(originTable.findOne({"origin_id": msg["origin_id"]})): 
+            ret = originTable.insertOne(msg)
+            if ret == 1:
+                logger.info("Added origin " + msg["origin_id"])
+                return {"topic": "lbsresponse/origin/add", "msg": True}
+            else:
+                logger.info("Origin already present" + msg["origin_ip"])
+                return {"topic": "lbsresponse/origin/add", "msg": False}
+        else:
+           logger.warning("Origin ID  Already Present " + msg["origin_id"])
+           return {"topic": "lbsresponse/origin/add", "msg": json.dumps({"info": "Origin ID present"})} 
     else:
-        logger.info("Origin already present" + msg["origin_ip"])
-        return {"topic": "lbsresponse/origin/add", "msg": False}
-
-
+       logger.warning("Origin IP  Already Present " + msg["origin_ip"])
+       return {"topic": "lbsresponse/origin/add", "msg": json.dumps({"info": "Origin IP present"})} 
+       
 @app.task
 def OriginStat(msg):
     '''
