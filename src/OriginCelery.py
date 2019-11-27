@@ -148,15 +148,19 @@ def OriginFfmpegKill(msg):
 
 
 @app.task
-def OriginFfmpegKillAll():
+def OriginFfmpegKillAll(msg):
     '''
         Input: [{cmd: string, rtsp_cmd: string}]
         Trigger: originffmpegspawner.py
         Handles: Kills all streams
     '''
+    msg = json.loads(msg)
+    logger.info("KillAll reached")
+    logger.info(msg)
     sp.Popen(["pkill", "-f", FFMPEG_PATH], stdin=FNULL,
              stdout=FNULL, stderr=FNULL, shell=False)
-    return 0
+    #return 0
+    return {"topic": "db/origin/ffmpeg/stream/deleteall", "msg": msg}
 
 
 @app.task

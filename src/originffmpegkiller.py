@@ -28,8 +28,6 @@ class OriginKiller():
     def router(self):
         while(True):
             if self.action == "origin/ffmpeg/kill":
-                print(self.msg)
-                print(self.action)
                 res = oc.OriginFfmpegKill.delay(self.msg)
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
@@ -49,9 +47,15 @@ class OriginKiller():
         msg_dict = json.loads(self.msg)
         print(msg_dict)
         print(self.origin_id)
-        if msg_dict[0]["origin_id"] == self.origin_id:
-            self.action = message.topic
-            print(self.action)
+        try: 
+           if isinstance(msg_dict, list): 
+               if msg_dict[0]["origin_id"] == self.origin_id:
+                   self.action = message.topic
+           elif msg_dict["origin_id"] == self.origin_id:
+               self.action = message.topic
+
+        except Exception as e:
+               print(e)
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''

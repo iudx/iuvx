@@ -98,8 +98,8 @@ mongoDB = mongoclient["vid-iot"]
 originTable = Table(mongoDB, "originTable")
 
 '''
-    {cmd: string, from_ip: string, stream_ip: string,
-     to_ip: string, rtsp_cmd: string}
+    {cmd: string, from_ip: string, stream_ip: string, stread_id: string,
+     to_ip: string, origin_id: string, rtsp_cmd: string}
 '''
 ffmpegProcsTable = Table(mongoDB, "ffmpegProcsTable")
 
@@ -185,6 +185,16 @@ def OriginStat(msg):
                        {"num_clients": msg["num_clients"]},
                        upsert=False)
 
+@app.task
+def DeleteAllStreamsFromDB(msg):
+    
+    logger.info("Deleting All Streams")
+    logger.info(msg)
+    msg = json.loads(msg)
+    ffmpegProcsTable.deleteMany({"origin_id": msg["origin_id"]})
+    streamsTable.deleteMany({"origin_id": msg["origin_id"]})
+    originTable.delete({"origin_id": msg["origin_id"]})
+    return 0
 
 @app.task
 def DeleteOrigin(msg):
@@ -197,17 +207,25 @@ def DeleteOrigin(msg):
     '''
     logger.info("Deleting Origin")
     msg = json.loads(msg)
-    ret = originTable.delete({"origin_id": msg["origin_id"]})
-    if ret == 1:
-        logger.info("Deleted origin " + msg["origin_id"])
-        ffmpegProcsTable.deleteMany({"to_id": msg["origin_id"]})
-        ffmpegProcsTable.deleteMany({"origin_id": msg["origin_id"]})
-        streamsTable.deleteMany({"from_id": msg["origin_id"]})
-        logger.info("Origin Deleted----> ID:" + " ID:"+str(msg["origin_id"]))
-        return [{"topic": "lbsresponse/origin/del", "msg": True},
-                {"topic": "origin/ffmpeg/killall", "msg": json.dumps(msg)}]
-    else:
-        return {"topic": "lbsresponse/origin/del", "msg": False}
+    #Ab: Make the status for all streams on this origin_id as 'deleting'
+    # This is to ensure that stat checker should not bring these back up
+    streamsTable.update({"origin_id": msg["origin_id"]},
+                        {"status": "deleting"})
+    #Now send a message to kill all the streams on this origin id
+    return [{"topic": "lbsresponse/origin/del", "msg": True},
+            {"topic": "origin/ffmpeg/killall", "msg": json.dumps(msg)}]
+
+    #ret = originTable.delete({"origin_id": msg["origin_id"]})
+    #if ret == 1:
+    #    logger.info("Deleted origin " + msg["origin_id"])
+    #    ffmpegProcsTable.deleteMany({"to_id": msg["origin_id"]})
+    #    ffmpegProcsTable.deleteMany({"origin_id": msg["origin_id"]})
+    #    streamsTable.deleteMany({"from_id": msg["origin_id"]})
+    #    logger.info("Origin Deleted----> ID:" + " ID:"+str(msg["origin_id"]))
+    #    return [{"topic": "lbsresponse/origin/del", "msg": True},
+    #            {"topic": "origin/ffmpeg/killall", "msg": json.dumps(msg)}]
+    #else:
+    #    return {"topic": "lbsresponse/origin/del", "msg": False}
 
 
 @app.task
@@ -407,24 +425,17 @@ def InsertStream(msg):
 
     ''' Origin Load balancer logic '''
     origins = originTable.findAll()
-    logger.info("Line 408 ------------------------")
-    logger.info(origins)
     bestOrigin = {}
     bestNumClients = 100
     for origin in origins:
         if (int(origin["num_clients"]) < bestNumClients):
             bestOrigin = origin
             bestNumClients = int(origin["num_clients"])
-    logger.info("Best")
-    logger.info(bestOrigin)
     origin = bestOrigin
 
     ''' TODO: Add 'status' to the streamsTable '''
     stream_ips = []
     stream_ids = []
-    logger.info("Here ------------------------ ")
-    logger.info(origin)
-    logger.info(streamsTable.findAll({"origin_ip": origin["origin_ip"]}))
     if streamsTable.count() != 0:
         for stream in streamsTable.findAll({"origin_ip": origin["origin_ip"]}):
             stream_ips.append(stream["stream_ip"])
@@ -481,6 +492,8 @@ def InsertStream(msg):
                        " to ", origin["origin_id"], " already present")
         return {"topic": "lbsresponse/stream/add",
                 "msg": json.dumps({"info": "fail"})}
+
+
 
 @app.task
 def DeleteStreamFromDB(msg):
