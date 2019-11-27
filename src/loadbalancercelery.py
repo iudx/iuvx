@@ -398,6 +398,8 @@ def InsertStream(msg):
         Response: HTTPServer.py, celeryLBmain.py
     '''
     msg = json.loads(msg)
+    logger.info("InsertStream")
+    logger.info(msg)
 
     if originTable.count() == 0:
         logger.info("No Origin Server Present")
@@ -405,17 +407,24 @@ def InsertStream(msg):
 
     ''' Origin Load balancer logic '''
     origins = originTable.findAll()
+    logger.info("Line 408 ------------------------")
+    logger.info(origins)
     bestOrigin = {}
     bestNumClients = 100
     for origin in origins:
-        if (origin["num_clients"] < bestNumClients):
+        if (int(origin["num_clients"]) < bestNumClients):
             bestOrigin = origin
-            bestNumClients = origin["num_clients"]
+            bestNumClients = int(origin["num_clients"])
+    logger.info("Best")
+    logger.info(bestOrigin)
     origin = bestOrigin
 
     ''' TODO: Add 'status' to the streamsTable '''
     stream_ips = []
     stream_ids = []
+    logger.info("Here ------------------------ ")
+    logger.info(origin)
+    logger.info(streamsTable.findAll({"origin_ip": origin["origin_ip"]}))
     if streamsTable.count() != 0:
         for stream in streamsTable.findAll({"origin_ip": origin["origin_ip"]}):
             stream_ips.append(stream["stream_ip"])

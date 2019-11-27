@@ -325,7 +325,7 @@ def origin():
                 return Response(json.dumps({}),
                                 status=200, mimetype="application/json")
             else:
-                return Response(json.dumps({}), status=409,
+                return Response(json.dumps(ret["msg"]), status=409,
                                 mimetype="application/json")
 
         elif request.method == "DELETE":
