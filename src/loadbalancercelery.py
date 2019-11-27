@@ -43,8 +43,8 @@ class Table():
         else:
             return 0
 
-    def update(self, key, doc):
-        res = self.collection.update_one(key, {"$set": doc}, upsert=True)
+    def update(self, key, doc, upsert=True):
+        res = self.collection.update_one(key, {"$set": doc}, upsert=upsert)
         return res.modified_count
 
     def findOne(self, doc, args=None):
@@ -182,7 +182,8 @@ def OriginStat(msg):
     '''
     msg = json.loads(msg)
     originTable.update({"origin_id": msg["origin_id"]},
-                       {"num_clients": msg["num_clients"]})
+                       {"num_clients": msg["num_clients"]},
+                       upsert=False)
 
 
 @app.task
