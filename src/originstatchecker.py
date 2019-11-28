@@ -112,6 +112,7 @@ class Statter():
             stats = xd.parse(req.content)
             statList = []
             try:
+                # TODO: Hardcoded application 1 here
                 self.numClients = (stats["rtmp"]["server"]["application"][1]
                                         ["live"]["nclients"])
                 stats = (stats["rtmp"]["server"]["application"][1]
@@ -136,7 +137,8 @@ class Statter():
                     if isinstance(statList, list):
                         for stat in statList:
                             try: 
-                                if stat["name"] in self.rS:
+                                """ Check only publishing streams """
+                                if stat["name"] in self.rS and "publishing" in stat.keys():
                                     s_name = stat["name"]
                                     presentStreams.append(stat["name"])
                                     self.rS[stat["name"]]["InBW"] = int(stat["bw_in"])
@@ -155,8 +157,6 @@ class Statter():
                                             self.rS[s_name]["Timer"].cancel()
                                             self.rS[s_name]["Timer"] = None
                                             self.rS[s_name]["cmdCounter"] = 0
-          
-
                             except Exception as e:
                                 print("No name in stat, error message ",e)
                     #print("Present Streams ", set(presentStreams))
@@ -284,7 +284,7 @@ class Statter():
             time.sleep(30)
 
     def start(self):
-        time.sleep(1)
+        time.sleep(10)
         self.mqttc.publish("request/origin/streams", json.dumps({"origin_id": self.ORIGIN_ID}))
         print("Requesting all streams belonging to ", self.ORIGIN_ID)
         while(self.startFlag is False):
