@@ -2,5 +2,13 @@
     {
         "stream_id": "iisc_108",
         "stream_ip": "rtsp://10.18.20.108/h264"
+    },
+    {
+        "stream_id": "iisc_107",
+        "stream_ip": "rtsp://10.18.20.107/h264"
+    },
+    {
+        "stream_id": "iisc_109",
+        "stream_ip": "rtsp://10.18.20.109/h264"
     }
 ]

@@ -144,14 +144,16 @@ class Statter():
                                     self.rS[stat["name"]]["InBW"] = int(stat["bw_in"])
                                     #Ab: Found an active stream which in dB shows "down" or "onboarding"
                                     #    Send message to dB to update the status
+                                    #msg = {"stream_id": stat["name"], "status": self.rS[stat["name"]]["status"]}
+                                    #self.mqttc.publish("stream/stat", json.dumps(msg))
                                     if (self.rS[stat["name"]]["status"] == "down" or 
                                              self.rS[stat["name"]]["status"] == "onboarding"):
                                         print("Found down/onboarding stream that is active")
                                         #Update the status in dB
                                         self.rS[stat["name"]]["status"] = "active"
-                                        #print(self.rS[stat["name"]]["status"], s_name)
+                                        print(self.rS[stat["name"]]["status"], s_name)
                                         msg = {"stream_id": stat["name"], "status": "active"}
-                                        #print(json.dumps(msg))
+                                        print(json.dumps(msg))
                                         self.mqttc.publish("stream/stat", json.dumps(msg))
                                         if (self.rS[s_name]["Timer"] != None):
                                             self.rS[s_name]["Timer"].cancel()

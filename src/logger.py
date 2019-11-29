@@ -1,11 +1,11 @@
 from MQTTPubSub import MQTTPubSub
 import os
 import sys
+import time
 
 
 def on_message(client, userdata, message):
-    with open("logs.txt", "a+") as f:
-        f.write(str(message.payload.decode("utf-8"))+"\n")
+    print(message.topic)
 
 
 mqtt_ip = os.environ["LB_IP"]
@@ -27,4 +27,5 @@ client = MQTTPubSub(mqttServerParams)
 if __name__ == "__main__":
     client.run()
     while(True):
+        time.sleep(0.01)
         pass

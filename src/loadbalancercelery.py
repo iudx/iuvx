@@ -443,12 +443,19 @@ def InsertStream(msg):
 
     if msg["stream_ip"] not in stream_ips:
         if msg["stream_id"] not in stream_ids:
-            streamsTable.insertOne({"stream_ip": msg["stream_ip"],
+            ret = streamsTable.insertOne({"stream_ip": msg["stream_ip"],
                                     "stream_id": msg["stream_id"],
                                     "origin_ip": origin["origin_ip"],
                                     "origin_id": origin["origin_id"],
                                     "status": "onboarding",
                                     "dist_ip": ""})
+            #if ret == 0:
+            #    logger.info("^^^^^^^^^^")
+            #    logger.info(msg["stream_id"] + "Add FAIL")
+            #elif ret == 1:
+            #    logger.info("^^^^^^^^^^")
+            #    logger.info(msg["stream_id"] + "Add PASS")
+            
             logger.info("Added stream " + msg["stream_id"] +
                         " with IP " + msg["stream_ip"] +
                         " to " + origin["origin_id"])
@@ -662,8 +669,12 @@ def StreamStat(msg):
         Handles: Updates the status of the stream
     '''
     msg = json.loads(msg)
-    streamsTable.update({"stream_id": msg["stream_id"]},
+             
+    ret = streamsTable.update({"stream_id": msg["stream_id"]},
                         {"status": msg["status"]})
+    #if ret == 1:
+    #   logger.info("Updated Stream to dB")
+       
     return 0
 
 

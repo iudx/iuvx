@@ -48,9 +48,70 @@ class LB():
 
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
-        self.msg = message.payload
-        self.action = message.topic
-        print(self.action, self.msg)
+        msg = message.payload
+        action = message.topic
+        print(action, msg)
+        if action == "request/dist/streams":
+            ''' TODO: Use this '''
+            res = lbc.ReqAllDistStreams.delay(msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if action == "origin/stat":
+            lbc.OriginStat.delay(msg)
+
+        if action == "db/origin/ffmpeg/stream/spawn":
+            res = lbc.UpdateOriginStream.delay(msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if action == "db/origin/ffmpeg/stream/delete":
+            print(action)
+            print(msg)
+            res = lbc.DeleteStreamFromDB.delay(msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if action == "db/origin/ffmpeg/stream/deleteall":
+            print(action)
+            print(msg)
+            res = lbc.DeleteAllStreamsFromDB.delay(msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if action == "dist/stat":
+            ''' TODO: Why no ret '''
+            lbc.DistStat.delay(msg)
+
+        if action == "db/origin/ffmpeg/dist/spawn":
+            res = lbc.OriginFfmpegDistPush.delay(msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if action == "db/origin/ffmpeg/respawn":
+            res = lbc.OriginFfmpegRespawn.delay(msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if action == "db/dist/ffmpeg/respawn":
+            ''' TODO: Message should come from diststatchecker '''
+            res = lbc.OriginFFmpegDistRespawn.delay(msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if action == "request/origin/streams":
+            res = lbc.ReqAllOriginStreams.delay(msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if action == "stream/stat":
+            #print("********")
+            #print(str(msg))
+            #print("********")
+            res = lbc.StreamStat.delay(msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
@@ -66,6 +127,8 @@ class LB():
     def router(self):
         ''' Router '''
         while(True):
+            time.sleep(1)
+            pass
 
             if self.action == "request/dist/streams":
                 ''' TODO: Use this '''
@@ -121,6 +184,9 @@ class LB():
                                  args=(res,)).start()
 
             if self.action == "stream/stat":
+                print("********")
+                print(str(self.msg))
+                print("********")
                 res = lbc.StreamStat.delay(self.msg)
                 threading.Thread(target=self.monitorTaskResult,
                                  args=(res,)).start()
