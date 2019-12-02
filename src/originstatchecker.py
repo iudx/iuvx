@@ -1,7 +1,6 @@
 import requests
 import xmltodict as xd
 import paho.mqtt.client as mqtt
-import socket
 # import pymongo
 import time
 import threading
@@ -29,14 +28,10 @@ class Statter():
         self.startFlag = False
         self.waitPeriod = 30
         self.dictLock = threading.Lock()
-        """ Origin Server IP Address, currently LAN IP """
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        self.ORIGIN_IP = str(s.getsockname()[0])
+        self.ORIGIN_IP = os.environ["ORIGIN_IP"]
         self.ORIGIN_ID = os.environ["ORIGIN_ID"]
         if(self.ORIGIN_ID is None):
             sys.exit(0)
-        s.close()
 
         ''' MQTT Backend '''
         self.mqttServerParams = {}
