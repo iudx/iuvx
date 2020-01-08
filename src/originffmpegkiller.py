@@ -25,22 +25,6 @@ class OriginKiller():
         self.client = MQTTPubSub(self.mqParams)
         self.client.run()
 
-    def router(self):
-        while(True):
-            if self.action == "origin/ffmpeg/kill":
-                res = oc.OriginFfmpegKill.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "origin/ffmpeg/killall":
-                res = oc.OriginFfmpegKillAll.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            self.action = "idle"
-            self.msg = ""
-            time.sleep(0.001)
-
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
         self.msg = message.payload
@@ -48,14 +32,18 @@ class OriginKiller():
         print(msg_dict)
         print(self.origin_id)
         try: 
-           if isinstance(msg_dict, list): 
-               if msg_dict[0]["origin_id"] == self.origin_id:
-                   self.action = message.topic
-           elif msg_dict["origin_id"] == self.origin_id:
-               self.action = message.topic
+            if isinstance(msg_dict, list): 
+                if msg_dict[0]["origin_id"] != self.origin_id:
+                    return
+            elif msg_dict["origin_id"] != self.origin_id:
+                return
+
+            res = oc.OriginFfmpegKillAll.delay(self.msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
 
         except Exception as e:
-               print(e)
+            print(e)
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
@@ -86,7 +74,6 @@ def main():
     origin_id = os.environ["ORIGIN_ID"]
     originKiller = OriginKiller(origin_id, mqtt_ip, mqtt_port,
                                 mqtt_uname, mqtt_passwd)
-    originKiller.router()
 
 
 if __name__ == "__main__":

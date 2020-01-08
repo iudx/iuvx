@@ -13,6 +13,7 @@ class MQTTPubSub:
         self.timeout = params["timeout"]
         self.topic = params["topic"]
         self._mqttc = mqtt.Client(None)
+        self.mqloop_running = 0
         
         if( "username" in params):
             self.username = params["username"]
@@ -41,14 +42,15 @@ class MQTTPubSub:
 
 
     def publish(self, topic, payload):
-        self._mqttc.publish(topic, payload)
+        if self.mqloop_running == 1:
+            self._mqttc.publish(topic, payload)
+        else:
+            self._mqttc.loop_start()
+            self._mqttc.publish(topic, payload)
+            self._mqttc.loop_stop()
 
     def run(self):
-         threading.Thread(target=self._mqttc.loop_start()).start()
-        
-
-
-
-
-
-
+        self.mqloop_running = 1
+        self._mqttc.loop_forever()
+        # threading loop_start() crashes program on error in callback
+        # threading.Thread(target=self._mqttc.loop_start()).start()

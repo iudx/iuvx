@@ -16,8 +16,6 @@ class LB():
 
     def __init__(self, mqtt_ip, mqtt_port, mqtt_uname, mqtt_passwd):
         ''' Init the router '''
-        self.action = "idle"
-        self.msg = ""
         # MQTT Params
         self.mqParams = {}
         self.mqParams["url"] = mqtt_ip
@@ -105,9 +103,6 @@ class LB():
                              args=(res,)).start()
 
         if action == "stream/stat":
-            #print("********")
-            #print(str(msg))
-            #print("********")
             res = lbc.StreamStat.delay(msg)
             threading.Thread(target=self.monitorTaskResult,
                              args=(res,)).start()
@@ -124,77 +119,6 @@ class LB():
                 self.client.publish(retDict["topic"],
                                     retDict["msg"])
 
-    def router(self):
-        ''' Router '''
-        while(True):
-            time.sleep(1)
-            pass
-
-            if self.action == "request/dist/streams":
-                ''' TODO: Use this '''
-                res = lbc.ReqAllDistStreams.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "origin/stat":
-                lbc.OriginStat.delay(self.msg)
-
-            if self.action == "db/origin/ffmpeg/stream/spawn":
-                res = lbc.UpdateOriginStream.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "db/origin/ffmpeg/stream/delete":
-                print(self.action)
-                print(self.msg)
-                res = lbc.DeleteStreamFromDB.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "db/origin/ffmpeg/stream/deleteall":
-                print(self.action)
-                print(self.msg)
-                res = lbc.DeleteAllStreamsFromDB.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "dist/stat":
-                ''' TODO: Why no ret '''
-                lbc.DistStat.delay(self.msg)
-
-            if self.action == "db/origin/ffmpeg/dist/spawn":
-                res = lbc.OriginFfmpegDistPush.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "db/origin/ffmpeg/respawn":
-                res = lbc.OriginFfmpegRespawn.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "db/dist/ffmpeg/respawn":
-                ''' TODO: Message should come from diststatchecker '''
-                res = lbc.OriginFFmpegDistRespawn.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "request/origin/streams":
-                res = lbc.ReqAllOriginStreams.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "stream/stat":
-                print("********")
-                print(str(self.msg))
-                print("********")
-                res = lbc.StreamStat.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            self.action = "idle"
-            self.msg = ""
-            time.sleep(0.001)
-
 
 def main():
     mqtt_ip = os.environ["LB_IP"]
@@ -206,7 +130,6 @@ def main():
         sys.exit(0)
     lb = LB(mqtt_ip, mqtt_port, mqtt_uname, mqtt_passwd)
     lb.client.run()
-    lb.router()
 
 
 if __name__ == "__main__":

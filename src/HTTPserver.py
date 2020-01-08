@@ -223,6 +223,8 @@ def stream():
             data = request.get_json(force=True)
             stream_ip = data["stream_ip"]
             stream_id = data["stream_id"]
+            stream_id.replace(" ", "%20")
+            """ We are assuming that space is currently the only character needing encode """
             logger.info("Added Stream " + str(stream_id))
             msg = {"stream_id": stream_id, "stream_ip": stream_ip}
             res = lbc.InsertStream.delay(json.dumps(msg))
@@ -590,5 +592,6 @@ def archivestream():
 
 if __name__ == "__main__":
     logger.info("Starting server on - ", HTTP_IP + ":" + HTTP_PORT)
-    client.run()
+    # Don't need to run client if we're only publishing
+    # client.run()
     app.run(host=HTTP_IP, port=int(HTTP_PORT), debug=True)

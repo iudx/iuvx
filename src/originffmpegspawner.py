@@ -10,7 +10,7 @@ import json
 class Origin():
     def __init__(self, origin_id, mqtt_ip, mqtt_port, mqtt_uname, mqtt_passwd):
         ''' Init the router '''
-        self.origin_id = origin_id
+        self.ORIGIN_ID = origin_id
         self.action = "idle"
         self.msg = ""
         self.mqParams = {}
@@ -26,34 +26,41 @@ class Origin():
         self.mqParams["onMessage"] = self.on_message
         self.client = MQTTPubSub(self.mqParams)
 
-    def router(self):
-        while(True):
-            if self.action == "origin/ffmpeg/stream/spawn":
-                res = oc.OriginFfmpegSpawn.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "origin/ffmpeg/dist/spawn":
-                res = oc.OriginFfmpegDistSpawn.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            if self.action == "origin/ffmpeg/dist/respawn":
-                res = oc.OriginFfmpegDistRespawn.delay(self.msg)
-                threading.Thread(target=self.monitorTaskResult,
-                                 args=(res,)).start()
-
-            self.action = "idle"
-            self.msg = ""
-            time.sleep(0.01)
-
     def on_message(self, client, userdata, message):
-        ''' MQTT Callback function '''
+
         self.msg = message.payload
+        self.action = message.topic
         msg_dict = json.loads(self.msg)
-        if msg_dict["origin_id"] == self.origin_id:
-            self.action = message.topic
-            print(self.action, self.msg)
+        print(msg_dict)
+
+        if msg_dict["origin_id"] != self.ORIGIN_ID:
+            print("Oh no returning")
+            return
+
+        if self.action == "origin/ffmpeg/stream/spawn":
+            res = oc.OriginFfmpegSpawn.delay(self.msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if self.action == "origin/ffmpeg/dist/spawn":
+            res = oc.OriginFfmpegDistSpawn.delay(self.msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        if self.action == "origin/ffmpeg/dist/respawn":
+            res = oc.OriginFfmpegDistRespawn.delay(self.msg)
+            threading.Thread(target=self.monitorTaskResult,
+                             args=(res,)).start()
+
+        self.action = "idle"
+        self.msg = ""
+
+    def defunct_cleaner(self):
+        refresh_every = 10 # seconds
+        while(True):
+            time.sleep(refresh_every)
+            oc.CleanProcessTable()
+
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
@@ -72,17 +79,6 @@ class Origin():
                 break
 
 
-class DefunctCleaner(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self, target=sys.exit)
-
-    def run(self):
-        while(True):
-            try:
-                os.waitpid(-1, os.WNOHANG)
-            except Exception as exc:
-                continue
-
 
 def main():
     mqtt_ip = os.environ["LB_IP"]
@@ -94,11 +90,9 @@ def main():
         sys.exit(0)
     origin_id = os.environ["ORIGIN_ID"]
     origin = Origin(origin_id, mqtt_ip, mqtt_port, mqtt_uname, mqtt_passwd)
-    t1 = DefunctCleaner()
-    t1.setDaemon(True)
-    t1.start()
+    clean_thread = threading.Thread(target=origin.defunct_cleaner)
+    clean_thread.start()
     origin.client.run()
-    origin.router()
 
 
 if __name__ == "__main__":

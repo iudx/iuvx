@@ -31,6 +31,22 @@ FFMPEG_PATH = os.environ["FFMPEG_PATH"]
 
 
 @app.task
+def CleanProcessTable():
+    '''
+        Cleans the process table of defunct processes
+    '''
+    while(True):
+        try:
+            pid_ret = os.waitpid(-1, os.WNOHANG)
+            if pid_ret[0] == 0:
+                break
+        except Exception as e:
+            pass
+    return 0
+        
+
+
+@app.task
 def OriginFfmpegSpawn(msg):
     '''
         Input: {origin_ip: string, origin_id: string,
@@ -47,7 +63,7 @@ def OriginFfmpegSpawn(msg):
     rtsp_cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
                 "tcp", "rtsp://" + msg["origin_ip"].strip() +
-                ":80/dynamic/" + msg["stream_id"].strip(), "&"]
+                ":80/dynamic/" + msg["stream_id"].strip()]
     ''' FFMPEG RTMP push to origin server '''
     '''
         TODO: Get PID and send to
@@ -56,12 +72,12 @@ def OriginFfmpegSpawn(msg):
     cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
            "-an", "-vcodec", "copy", "-f", "flv", "rtmp://" +
            str(msg["origin_ip"]).strip() + ":1935/dynamic/" +
-           str(msg["stream_id"]).strip(), "&"]
+           str(msg["stream_id"]).strip()]
     logger.info("Executing command " + " ".join(cmd))
-    sp.Popen(" ".join(cmd), stdout=FNULL, stderr=FNULL,
-             stdin=FNULL, shell=True, preexec_fn=os.setpgrp)
-    sp.Popen(" ".join(rtsp_cmd), stdin=FNULL, stdout=FNULL,
-             stderr=FNULL, shell=True, preexec_fn=os.setpgrp)
+    sp.Popen(cmd, stdout=FNULL, stderr=FNULL,
+             stdin=FNULL, shell=False, preexec_fn=os.setpgrp)
+    sp.Popen(rtsp_cmd, stdin=FNULL, stdout=FNULL,
+             stderr=FNULL, shell=False, preexec_fn=os.setpgrp)
 
     out = {"cmd": " ".join(cmd), "from_ip": msg["stream_ip"],
            "stream_id": msg["stream_id"], "to_ip": msg["origin_ip"], "origin_id": msg["origin_id"],
@@ -89,19 +105,19 @@ def OriginFfmpegDistSpawn(msg):
                 ":1935/dynamic/" + str(msg["stream_id"]).strip(),
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
                 "tcp", "rtsp://" + str(msg["dist_ip"]).strip() +
-                ":80/dynamic/" + str(msg["stream_id"]).strip(), "&"]
+                ":80/dynamic/" + str(msg["stream_id"]).strip()]
 
     cmd = ["nohup", FFMPEG_PATH, "-i", "rtmp://" +
            str(msg["origin_ip"]).strip() +
            ":1935/dynamic/" + str(msg["stream_id"]).strip(),
            "-an", "-vcodec", "copy", "-f", "flv",
            "rtmp://" + str(msg["dist_ip"]).strip() +
-           ":1935/dynamic/" + str(msg["stream_id"]).strip(), "&"]
+           ":1935/dynamic/" + str(msg["stream_id"]).strip()]
 
-    sp.Popen(" ".join(cmd), stdin=FNULL, stdout=FNULL,
-             stderr=FNULL, shell=True, preexec_fn=os.setpgrp)
-    sp.Popen(" ".join(rtsp_cmd), stdin=FNULL, stdout=FNULL,
-             stderr=FNULL, shell=True, preexec_fn=os.setpgrp)
+    sp.Popen(cmd, stdin=FNULL, stdout=FNULL,
+             stderr=FNULL, shell=False, preexec_fn=os.setpgrp)
+    sp.Popen(rtsp_cmd, stdin=FNULL, stdout=FNULL,
+             stderr=FNULL, shell=False, preexec_fn=os.setpgrp)
     logger.info("Execution command " + " ".join(cmd))
     out = {"cmd": " ".join(cmd), "from_ip": msg["origin_ip"],
            "stream_id": msg["stream_id"], "to_ip": msg["dist_ip"],
@@ -181,7 +197,7 @@ def OriginFfmpegArchive(msg, length):
            str(msg["start_time"]) + "_end_date_" +
            str(msg["end_date"]) + "_end_time_" +
            str(msg["end_time"]) + "_length_" +
-           str(length)+".flv", "&"]
+           str(length)+".flv"]
     logger.info(" ".join(cmd))
     sp.Popen(" ".join(cmd), stdout=FNULL, stderr=FNULL,
-             stdin=FNULL, shell=True, preexec_fn=os.setpgrp)
+             stdin=FNULL, shell=False, preexec_fn=os.setpgrp)
