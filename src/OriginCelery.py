@@ -62,7 +62,7 @@ def OriginFfmpegSpawn(msg):
     ''' spawn rtsp push '''
     rtsp_cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
-                "tcp", "rtsp://" + msg["origin_ip"].strip() +
+                "tcp", "rtsp://localhost" +
                 ":80/dynamic/" + msg["stream_id"].strip()]
     ''' FFMPEG RTMP push to origin server '''
     '''
@@ -70,8 +70,8 @@ def OriginFfmpegSpawn(msg):
         loadbalancercelery.py:UpdateOriginStream()
     '''
     cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
-           "-an", "-vcodec", "copy", "-f", "flv", "rtmp://" +
-           str(msg["origin_ip"]).strip() + ":1935/dynamic/" +
+           "-an", "-vcodec", "copy", "-f", "flv", "rtmp://localhost" +
+           ":1935/dynamic/" +
            str(msg["stream_id"]).strip()]
     logger.info("Executing command " + " ".join(cmd))
     sp.Popen(cmd, stdout=FNULL, stderr=FNULL,
@@ -101,14 +101,13 @@ def OriginFfmpegDistSpawn(msg):
     logger.info("Spawning FFMPEG push to distribution server ")
 
     rtsp_cmd = ["nohup", FFMPEG_PATH, "-i",
-                "rtmp://" + str(msg["origin_ip"]).strip() +
+                "rtmp://localhost" +
                 ":1935/dynamic/" + str(msg["stream_id"]).strip(),
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
                 "tcp", "rtsp://" + str(msg["dist_ip"]).strip() +
                 ":80/dynamic/" + str(msg["stream_id"]).strip()]
 
-    cmd = ["nohup", FFMPEG_PATH, "-i", "rtmp://" +
-           str(msg["origin_ip"]).strip() +
+    cmd = ["nohup", FFMPEG_PATH, "-i", "rtmp://localhost" +
            ":1935/dynamic/" + str(msg["stream_id"]).strip(),
            "-an", "-vcodec", "copy", "-f", "flv",
            "rtmp://" + str(msg["dist_ip"]).strip() +
@@ -188,7 +187,7 @@ def OriginFfmpegArchive(msg, length):
     '''
     logger.info("Archiving " + msg["stream_id"])
     cmd = ["nohup", FFMPEG_PATH, "-i",
-           "rtmp://" + str(msg["origin_ip"]).strip() +
+           "rtmp://localhost" +
            ":1935/ dynamic/" + str(msg["stream_id"]).strip(),
            "-an", "-vcodec", "copy", "-t", str(length), "-f",
            "flv",  "JobID_"+str(msg["job_id"]) + "_stream_id_" +
