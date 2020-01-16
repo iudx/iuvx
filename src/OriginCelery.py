@@ -16,6 +16,9 @@ sys.path.insert(1, './src')
 
 ''' Celery app '''
 ''' TODO: Parameterize '''
+''' TODO: Removed nohup because POpen forks process in daemon mode '''
+
+
 app = Celery('originffmpegspawner', backend="redis://localhost/1",
              broker="redis://localhost/1")
 
@@ -60,19 +63,19 @@ def OriginFfmpegSpawn(msg):
     msg = json.loads(msg)
     logger.info("Spawning " + msg["stream_id"])
     ''' spawn rtsp push '''
-    rtsp_cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
+    rtsp_cmd = [FFMPEG_PATH, "-i", msg["stream_ip"],
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
                 "tcp", "rtsp://localhost" +
-                ":80/dynamic/" + msg["stream_id"].strip(), ">/dev/null", "2>&1", "&"]
+                ":80/dynamic/" + msg["stream_id"].strip()]
     ''' FFMPEG RTMP push to origin server '''
     '''
         TODO: Get PID and send to
         loadbalancercelery.py:UpdateOriginStream()
     '''
-    cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
+    cmd = [FFMPEG_PATH, "-i", msg["stream_ip"],
            "-an", "-vcodec", "copy", "-f", "flv", "rtmp://localhost" +
            ":1935/dynamic/" +
-           str(msg["stream_id"]).strip(), ">/dev/null", "2>&1", "&"]
+           str(msg["stream_id"]).strip()]
     logger.info("Executing command " + " ".join(cmd))
     sp.Popen(cmd, stdout=FNULL, stderr=FNULL,
              stdin=FNULL, shell=False, preexec_fn=os.setpgrp)
@@ -101,18 +104,18 @@ def OriginFfmpegDistSpawn(msg):
     logger.info(type(msg))
     logger.info("Spawning FFMPEG push to distribution server ")
 
-    rtsp_cmd = ["nohup", FFMPEG_PATH, "-i",
+    rtsp_cmd = [FFMPEG_PATH, "-i",
                 "rtmp://localhost" +
                 ":1935/dynamic/" + str(msg["stream_id"]).strip(),
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
                 "tcp", "rtsp://" + str(msg["dist_ip"]).strip() +
-                ":80/dynamic/" + str(msg["stream_id"]).strip(), ">/dev/null", "2>&1", "&"]
+                ":80/dynamic/" + str(msg["stream_id"]).strip()]
 
-    cmd = ["nohup", FFMPEG_PATH, "-i", "rtmp://localhost" +
+    cmd = [FFMPEG_PATH, "-i", "rtmp://localhost" +
            ":1935/dynamic/" + str(msg["stream_id"]).strip(),
            "-an", "-vcodec", "copy", "-f", "flv",
            "rtmp://" + str(msg["dist_ip"]).strip() +
-           ":1935/dynamic/" + str(msg["stream_id"]).strip(), ">/dev/null", "2>&1", "&"]
+           ":1935/dynamic/" + str(msg["stream_id"]).strip()]
 
     sp.Popen(cmd, stdin=FNULL, stdout=FNULL,
              stderr=FNULL, shell=False, preexec_fn=os.setpgrp)
@@ -187,7 +190,7 @@ def OriginFfmpegArchive(msg, length):
         Handles: Archive db info
     '''
     logger.info("Archiving " + msg["stream_id"])
-    cmd = ["nohup", FFMPEG_PATH, "-i",
+    cmd = [FFMPEG_PATH, "-i",
            "rtmp://localhost" +
            ":1935/ dynamic/" + str(msg["stream_id"]).strip(),
            "-an", "-vcodec", "copy", "-t", str(length), "-f",
