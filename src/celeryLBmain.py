@@ -64,15 +64,11 @@ class LB():
                              args=(res,)).start()
 
         if action == "db/origin/ffmpeg/stream/delete":
-            print(action)
-            print(msg)
             res = lbc.DeleteStreamFromDB.delay(msg)
             threading.Thread(target=self.monitorTaskResult,
                              args=(res,)).start()
 
         if action == "db/origin/ffmpeg/stream/deleteall":
-            print(action)
-            print(msg)
             res = lbc.DeleteAllStreamsFromDB.delay(msg)
             threading.Thread(target=self.monitorTaskResult,
                              args=(res,)).start()

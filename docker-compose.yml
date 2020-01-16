@@ -27,6 +27,8 @@ services:
     volumes: 
       - ./:/vidiot/
     command: sh -c "tail -F lb"
+    log_opt:
+      max-size: 50m
 
   db:
     image: mongo
@@ -39,3 +41,5 @@ services:
       - "27017"
     networks: 
       - vidiot-net
+    log_opt:
+      max-size: 50m

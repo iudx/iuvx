@@ -63,7 +63,7 @@ def OriginFfmpegSpawn(msg):
     rtsp_cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
                 "tcp", "rtsp://localhost" +
-                ":80/dynamic/" + msg["stream_id"].strip()]
+                ":80/dynamic/" + msg["stream_id"].strip(), ">/dev/null", "2>&1", "&"]
     ''' FFMPEG RTMP push to origin server '''
     '''
         TODO: Get PID and send to
@@ -72,12 +72,13 @@ def OriginFfmpegSpawn(msg):
     cmd = ["nohup", FFMPEG_PATH, "-i", msg["stream_ip"],
            "-an", "-vcodec", "copy", "-f", "flv", "rtmp://localhost" +
            ":1935/dynamic/" +
-           str(msg["stream_id"]).strip()]
+           str(msg["stream_id"]).strip(), ">/dev/null", "2>&1", "&"]
     logger.info("Executing command " + " ".join(cmd))
     sp.Popen(cmd, stdout=FNULL, stderr=FNULL,
              stdin=FNULL, shell=False, preexec_fn=os.setpgrp)
-    sp.Popen(rtsp_cmd, stdin=FNULL, stdout=FNULL,
-             stderr=FNULL, shell=False, preexec_fn=os.setpgrp)
+    """ TODO: Run rtsp command when server exists """
+    # sp.Popen(rtsp_cmd, stdin=FNULL, stdout=FNULL,
+    #          stderr=FNULL, shell=False, preexec_fn=os.setpgrp)
 
     out = {"cmd": " ".join(cmd), "from_ip": msg["stream_ip"],
            "stream_id": msg["stream_id"], "to_ip": msg["origin_ip"], "origin_id": msg["origin_id"],
@@ -105,18 +106,18 @@ def OriginFfmpegDistSpawn(msg):
                 ":1935/dynamic/" + str(msg["stream_id"]).strip(),
                 "-an", "-vcodec", "copy", "-f", "rtsp", "-rtsp_transport",
                 "tcp", "rtsp://" + str(msg["dist_ip"]).strip() +
-                ":80/dynamic/" + str(msg["stream_id"]).strip()]
+                ":80/dynamic/" + str(msg["stream_id"]).strip(), ">/dev/null", "2>&1", "&"]
 
     cmd = ["nohup", FFMPEG_PATH, "-i", "rtmp://localhost" +
            ":1935/dynamic/" + str(msg["stream_id"]).strip(),
            "-an", "-vcodec", "copy", "-f", "flv",
            "rtmp://" + str(msg["dist_ip"]).strip() +
-           ":1935/dynamic/" + str(msg["stream_id"]).strip()]
+           ":1935/dynamic/" + str(msg["stream_id"]).strip(), ">/dev/null", "2>&1", "&"]
 
     sp.Popen(cmd, stdin=FNULL, stdout=FNULL,
              stderr=FNULL, shell=False, preexec_fn=os.setpgrp)
-    sp.Popen(rtsp_cmd, stdin=FNULL, stdout=FNULL,
-             stderr=FNULL, shell=False, preexec_fn=os.setpgrp)
+    # sp.Popen(rtsp_cmd, stdin=FNULL, stdout=FNULL,
+    #          stderr=FNULL, shell=False, preexec_fn=os.setpgrp)
     logger.info("Execution command " + " ".join(cmd))
     out = {"cmd": " ".join(cmd), "from_ip": msg["origin_ip"],
            "stream_id": msg["stream_id"], "to_ip": msg["dist_ip"],
