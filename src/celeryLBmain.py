@@ -46,7 +46,7 @@ class LB():
 
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
-        msg = message.payload
+        msg = message.payload.decode("UTF-8")
         action = message.topic
         print(action, msg)
         if action == "request/dist/streams":

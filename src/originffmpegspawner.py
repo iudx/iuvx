@@ -17,7 +17,7 @@ class Origin():
         self.mqParams["url"] = mqtt_ip
         self.mqParams["username"] = mqtt_uname
         self.mqParams["password"] = mqtt_passwd
-        self.mqParams["port"] = mqtt_port
+        self.mqParams["port"] = int(mqtt_port)
         self.mqParams["timeout"] = 60
         self.mqParams["topic"] = [("origin/ffmpeg/dist/respawn", 1),
                                   ("origin/ffmpeg/stream/spawn", 1),
@@ -28,7 +28,7 @@ class Origin():
 
     def on_message(self, client, userdata, message):
 
-        self.msg = message.payload
+        msg = message.payload.decode("UTF-8")
         self.action = message.topic
         msg_dict = json.loads(self.msg)
         print(msg_dict)

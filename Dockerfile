@@ -144,27 +144,27 @@ RUN apk add --update \
   x264-dev \
   mongodb \
   mosquitto \
-  python \
+  python3 \
   redis \
   influxdb \
-  python-dev \
-  py-pip \
+  python3-dev \
   build-base \
   tmux \
   x265-dev
 
 COPY ./requirements.txt /root/
 
-RUN pip install -r /root/requirements.txt
+RUN pip3 install -r /root/requirements.txt && \
+    adduser -D vid && \
+    ln -s /usr/bin/python3 /usr/bin/python && \
+    mkdir -p /opt/nginx/recording
 
 COPY --from=build-nginx /opt/nginx /opt/nginx
 COPY --from=build-ffmpeg /usr/local /usr/local
 COPY --from=build-ffmpeg /usr/lib/libfdk-aac.so.2 /usr/lib/libfdk-aac.so.2
 COPY ./configs/nginx.conf /opt/nginx/nginx.conf
 COPY ./configs/stat.xsl /opt/nginx/html/stat.xsl
-RUN mkdir -p /opt/nginx/recording
 
-RUN adduser -D vid
 
 
 EXPOSE 1935

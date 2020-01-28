@@ -11,3 +11,4 @@ virtualenv==15.0.1
 Werkzeug==0.14.1
 celery[redis]
 xmltodict==0.12.0
+pyIUDX==0.0.1

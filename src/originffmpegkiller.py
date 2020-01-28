@@ -27,8 +27,8 @@ class OriginKiller():
 
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
-        self.msg = message.payload
-        msg_dict = json.loads(self.msg)
+        msg = message.payload.decode("UTF-8")
+        msg_dict = json.loads(msg)
         print(msg_dict)
         print(self.origin_id)
         try: 

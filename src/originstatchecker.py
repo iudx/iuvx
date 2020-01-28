@@ -8,7 +8,7 @@ import time
 import collections
 import json
 import threading
-import Queue
+from multiprocessing import Queue
 from influxdb import InfluxDBClient
 import os
 import sys
@@ -23,7 +23,7 @@ class Statter():
         self.statPageURL = statPageURL
         ''' Registered Streams '''
         self.registered_streams = {}
-        self.missingsQ = Queue.Queue()
+        self.missingsQ = Queue()
         self.startFlag = False
         self.waitPeriod = 30
         self.dictLock = threading.Lock()
@@ -75,7 +75,7 @@ class Statter():
 
 
     def on_message(self, client, userdata, registerd_streams):
-        msg = registerd_streams.payload
+        msg = registerd_streams.payload.decode("UTF-8")
         topic = registerd_streams.topic
         msgDict = json.loads(msg)
         if msgDict["origin_id"] != self.ORIGIN_ID:
