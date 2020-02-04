@@ -194,7 +194,7 @@ class VidTest(unittest.TestCase):
         resp_streams = [s["stream_id"] for s in resp.json()]
         self.assertEqual(resp.status_code, 200)
         print("All streams: ", resp_streams)
-        raw_input()
+        input()
         for stream in resp_streams:
             self.assertTrue(stream in stream_ids)
         ''' Request for stream '''
@@ -205,7 +205,7 @@ class VidTest(unittest.TestCase):
             resp_json = resp.json()
             self.assertFalse(resp_json["info"] == "unavailable")
 
-        raw_input()
+        input()
         '''
             Reverse Pass
         '''
@@ -216,7 +216,7 @@ class VidTest(unittest.TestCase):
             resp = self.vs.deleteStream(stream["stream_id"])
             self.assertEqual(resp.status_code, 200)
             resp_json = resp.json()
-        raw_input()
+        input()
         ''' Show all streams '''
         #resp = self.vs.allStreams()
         #stream_ids = [s["stream_id"] for s in self.streams]
@@ -234,7 +234,7 @@ class VidTest(unittest.TestCase):
         ''' Delete origin server '''
         #resp = self.vs.deleteOrigin(self.origin_id)
         #print(resp.json())
-        #raw_input()
+        #input()
         #self.assertEqual(resp.status_code, 200)
         ''' Show all origin servers '''
         #resp = self.vs.allOrigin()

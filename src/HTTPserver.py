@@ -85,7 +85,7 @@ app = Flask(__name__)
 
 def verify_password(username, password):
     ''' Auth '''
-    hashed_password = hashlib.sha512(password).hexdigest()
+    hashed_password = hashlib.sha512(password.encode("UTF-8")).hexdigest()
     msg = {"username": username, "password": hashed_password}
     ''' TODO: don't use mqtt for user authentiaction '''
     res = lbc.VerifyUser.delay(json.dumps(msg))
@@ -114,7 +114,7 @@ def userfunc():
         data = request.get_json(force=True)
         user_name = data["username"]
         user_pass = data["password"]
-        hashed_password = hashlib.sha512(user_pass).hexdigest()
+        hashed_password = hashlib.sha512(user_pass.encode("UTF-8")).hexdigest()
         msg = {"username": user_name, "password": hashed_password}
         res = lbc.AddUser.delay(json.dumps(msg))
         ret = monitorTaskResult(res)
