@@ -29,31 +29,31 @@ class Origin():
     def on_message(self, client, userdata, message):
 
         msg = message.payload.decode("UTF-8")
-        self.action = message.topic
-        msg_dict = json.loads(self.msg)
+        action = message.topic
+        msg_dict = json.loads(msg)
         print(msg_dict)
 
         if msg_dict["origin_id"] != self.ORIGIN_ID:
             print("Oh no returning")
             return
 
-        if self.action == "origin/ffmpeg/stream/spawn":
-            res = oc.OriginFfmpegSpawn.delay(self.msg)
+        if action == "origin/ffmpeg/stream/spawn":
+            res = oc.OriginFfmpegSpawn.delay(msg)
             threading.Thread(target=self.monitorTaskResult,
                              args=(res,)).start()
 
-        if self.action == "origin/ffmpeg/dist/spawn":
-            res = oc.OriginFfmpegDistSpawn.delay(self.msg)
+        if action == "origin/ffmpeg/dist/spawn":
+            res = oc.OriginFfmpegDistSpawn.delay(msg)
             threading.Thread(target=self.monitorTaskResult,
                              args=(res,)).start()
 
-        if self.action == "origin/ffmpeg/dist/respawn":
-            res = oc.OriginFfmpegDistRespawn.delay(self.msg)
+        if action == "origin/ffmpeg/dist/respawn":
+            res = oc.OriginFfmpegDistRespawn.delay(msg)
             threading.Thread(target=self.monitorTaskResult,
                              args=(res,)).start()
 
-        self.action = "idle"
-        self.msg = ""
+        action = "idle"
+        msg = ""
 
     def defunct_cleaner(self):
         refresh_every = 10 # seconds

@@ -38,7 +38,7 @@ class OriginKiller():
             elif msg_dict["origin_id"] != self.origin_id:
                 return
 
-            res = oc.OriginFfmpegKillAll.delay(self.msg)
+            res = oc.OriginFfmpegKillAll.delay(msg)
             threading.Thread(target=self.monitorTaskResult,
                              args=(res,)).start()
 

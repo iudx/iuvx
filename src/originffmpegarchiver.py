@@ -20,6 +20,9 @@ h.setFormatter(fmt)
 log.addHandler(h)
 
 
+""" !!! Needs rewrite !!! """
+
+
 FNULL = open(os.devnull, 'w')
 
 
