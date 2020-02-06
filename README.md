@@ -1,8 +1,8 @@
-# Vid-IoT
+# IUVX - Indian Urban Video Exchange
 Distributed Video-IoT framework to support modern demands for high fidelity, high throughput, automatable video feeds with support for *IoT data annotated video streams*
 
 <p align="center">
-<img src="https://github.com/rbccps-iisc/Vid-IoT/blob/master/docs/vidiot_arch.png">
+<img src="https://github.com/iudx/iuvx/blob/single-node/docs/vidiot_arch.png">
 
 ## Installation
 1. Build the docker image. This will trigger a multistage docker build, building ffmpeg and nginx, and deploy the two on an alpine linux image. \
