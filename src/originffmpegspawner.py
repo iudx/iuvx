@@ -5,6 +5,7 @@ import threading
 from MQTTPubSub import MQTTPubSub
 import OriginCelery as oc
 import json
+import celery.exceptions
 
 
 class Origin():
@@ -39,18 +40,15 @@ class Origin():
 
         if action == "origin/ffmpeg/stream/spawn":
             res = oc.OriginFfmpegSpawn.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "origin/ffmpeg/dist/spawn":
             res = oc.OriginFfmpegDistSpawn.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "origin/ffmpeg/dist/respawn":
             res = oc.OriginFfmpegDistRespawn.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         action = "idle"
         msg = ""
@@ -64,20 +62,22 @@ class Origin():
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
-        while(True):
-            if res.ready():
-                ret = res.get()
-                if not ret:
-                    pass
-                elif isinstance(ret, dict):
-                    self.client.publish(ret["topic"], ret["msg"])
-                    time.sleep(0.1)
-                elif isinstance(ret, list):
-                    for retDict in ret:
-                        self.client.publish(retDict["topic"], retDict["msg"])
-                        time.sleep(30)
-                break
-
+        try:
+            ret = res.get(timeout=5)
+            if not ret:
+                pass
+            elif isinstance(ret, dict):
+                self.client.publish(ret["topic"], ret["msg"])
+                time.sleep(0.1)
+            elif isinstance(ret, list):
+                for retDict in ret:
+                    self.client.publish(retDict["topic"], retDict["msg"])
+                    time.sleep(10)
+        except celery.exceptions.TimeoutError:
+            pass
+        except Exception as e:
+            pass 
+        return
 
 
 def main():
