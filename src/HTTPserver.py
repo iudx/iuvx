@@ -20,7 +20,7 @@ import threading
 
 
 ''' Logger utility '''
-logger = logging.getLogger("werkzeug")
+logger = logging.getLogger()
 
 
 ''' Environment Variables '''
@@ -64,19 +64,20 @@ def monitorTaskResult(res):
     ''' Celery result callback monitoring thread '''
     global client
     ''' Celery task monitor '''
-    while(True):
-        if res.ready():
-            ret = res.get()
-            if not ret:
-                pass
-            elif isinstance(ret, dict):
-                client.publish(ret["topic"],
-                               ret["msg"])
-            elif isinstance(ret, list):
-                for retDict in ret:
-                    client.publish(retDict["topic"],
-                                   retDict["msg"])
-            return ret
+    try:
+        ret = res.get(timeout=5)
+    except Exception as e:
+        return -1
+    if not ret:
+        pass
+    elif isinstance(ret, dict):
+        client.publish(ret["topic"],
+                       ret["msg"])
+    elif isinstance(ret, list):
+        for retDict in ret:
+            client.publish(retDict["topic"],
+                           retDict["msg"])
+    return ret
 
 
 ''' HTTP App '''
@@ -89,7 +90,7 @@ def verify_password(username, password):
     msg = {"username": username, "password": hashed_password}
     ''' TODO: don't use mqtt for user authentiaction '''
     res = lbc.VerifyUser.delay(json.dumps(msg))
-    ret = ret = monitorTaskResult(res)
+    ret = monitorTaskResult(res)
     if ret["topic"] == "lbsresponse/verified" and ret["msg"] is True:
         return True
     else:
@@ -257,6 +258,10 @@ def stream():
             msg = {"stream_id": stream_id}
             res = lbc.DeleteStream.delay(json.dumps(msg))
             ret = monitorTaskResult(res)
+            if ret == -1:
+                """ Failed to delete """
+                return Response(json.dumps({}), status=404,
+                                mimetype="application/json")
             print(ret)
 
             if isinstance(ret, list):

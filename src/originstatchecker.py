@@ -78,8 +78,6 @@ class Statter():
         msg = registerd_streams.payload.decode("UTF-8")
         topic = registerd_streams.topic
         msgDict = json.loads(msg)
-        if msgDict["origin_id"] != self.ORIGIN_ID:
-            return
         print(msgDict)
         try:
             if isinstance(msgDict, list):

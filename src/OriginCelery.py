@@ -154,32 +154,15 @@ def OriginFfmpegKill(msg):
     msg = json.loads(msg)
     logger.info("Kill reached")
     logger.info(msg)
-    for stream in msg:
-        logger.info(stream["cmd"])
-        sp.Popen(["pkill", "-f", " ".join(stream["cmd"].split()[1:-1])],
-                 stdin=FNULL, stdout=FNULL, stderr=FNULL, shell=False)
-        time.sleep(1)
-        sp.Popen(["pkill", "-f", " ".join(stream["rtsp_cmd"].split()[1:-1])],
-                 stdin=FNULL, stdout=FNULL, stderr=FNULL, shell=False)
-        time.sleep(1)
+    sp.Popen(["pkill", "-f", msg["cmd"]],
+             stdin=FNULL, stdout=FNULL, stderr=FNULL, shell=False)
+    time.sleep(1)
+    sp.Popen(["pkill", "-f", msg["rtsp_cmd"]],
+             stdin=FNULL, stdout=FNULL, stderr=FNULL, shell=False)
+    time.sleep(1)
 
     return {"topic": "db/origin/ffmpeg/stream/delete", "msg": msg}
 
-
-@app.task
-def OriginFfmpegKillAll(msg):
-    '''
-        Input: [{cmd: string, rtsp_cmd: string}]
-        Trigger: originffmpegspawner.py
-        Handles: Kills all streams
-    '''
-    msg = json.loads(msg)
-    logger.info("KillAll reached")
-    logger.info(msg)
-    sp.Popen(["pkill", "-f", FFMPEG_PATH], stdin=FNULL,
-             stdout=FNULL, stderr=FNULL, shell=False)
-    #return 0
-    return {"topic": "db/origin/ffmpeg/stream/deleteall", "msg": msg}
 
 
 @app.task
