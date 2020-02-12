@@ -1,1608 +1,1718 @@
 {
-  "openapi" : "3.0.0",
-  "info" : {
-    "title" : "Video Server APIs",
-    "description" : "APIs to help communicate with the Video Server",
-    "version" : "1.0.0-oas3"
-  },
-  "servers" : [ {
-    "url" : "http://{Video-Server-IP}:{port}",
-    "variables" : {
-      "Video-Server-IP" : {
-        "default" : "10.156.14.141"
-      },
-      "port" : {
-        "default" : "5000"
-      }
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Video Server APIs",
+        "version": "1.0.0-oas3",
+        "description": "APIs to help communicate with the Video Server"
+    },
+    "servers": [
+        {
+            "url": "http://{Video-Server-IP}:{port}",
+            "variables": {
+                "Video-Server-IP": {
+                    "default": "10.156.14.141"
+                },
+                "port": {
+                    "default": "5000"
+                }
+            }
+        }
+    ],
+    "paths": {
+        "/request": {
+            "post": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/ReqStream",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Stream"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReqStream",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Request Stream"
+            }
+        },
+        "/origin": {
+            "get": {
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Origin",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Get Origins Present"
+            },
+            "post": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/Origin",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Origin"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Add origin"
+            },
+            "delete": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/Origin",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Origin"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Delete origin"
+            }
+        },
+        "/dist": {
+            "get": {
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Dist",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Get Distributions Present"
+            },
+            "post": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/Dist",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Dist"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Add Distribution"
+            },
+            "delete": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/Dist",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Dist"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Delete distribution"
+            }
+        },
+        "/streams": {
+            "get": {
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Stream"
+                                    },
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Get Streams Present"
+            },
+            "post": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/Stream",
+                    "content": {
+                        "application/json": {}
+                    },
+                    "required": true
+                },
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Stream",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Add Streams"
+            },
+            "delete": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/Stream"
+                },
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Stream",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Delete stream"
+            }
+        },
+        "/archive": {
+            "get": {
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Get Archives Present"
+            },
+            "post": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/Archive"
+                },
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Add Archives"
+            },
+            "delete": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/ArchiveDel"
+                },
+                "parameters": [
+                    {
+                        "name": "username",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "name": "password",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Invalid Credentials"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Delete archives"
+            }
+        },
+        "/user": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Users",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Get Users Present"
+            },
+            "post": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/Users",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Users"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Add User"
+            },
+            "delete": {
+                "requestBody": {
+                    "$ref": "#/components/requestBodies/Users"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Result obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "405": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Request Not supported"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "description": "Message obtained",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Delete user"
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ReqStream": {
+                "required": [
+                    "info"
+                ],
+                "type": "object",
+                "properties": {
+                    "stream_id": {
+                        "type": "string"
+                    },
+                    "info": {
+                        "description": "Stream status",
+                        "enum": [
+                            "active",
+                            "inactive",
+                            "down"
+                        ],
+                        "type": "string"
+                    },
+                    "hls": {
+                        "description": "HLS link",
+                        "type": "string"
+                    },
+                    "rtmp": {
+                        "description": "RTMP link",
+                        "type": "string"
+                    },
+                    "rtsp": {
+                        "description": "RTSP link",
+                        "type": "string"
+                    }
+                }
+            },
+            "ArchiveDel": {
+                "type": "object",
+                "properties": {
+                    "job": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/ArchiveDel"
+                    }
+                }
+            },
+            "Archive": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "start": {
+                        "type": "string"
+                    },
+                    "end": {
+                        "type": "string"
+                    },
+                    "sTime": {
+                        "type": "string"
+                    },
+                    "eTime": {
+                        "type": "string"
+                    },
+                    "job": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/Archive"
+                    }
+                }
+            },
+            "Users": {
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/Users"
+                    }
+                }
+            },
+            "Origin": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "$ref": "#/components/schemas/Origin"
+                    },
+                    "origin_id": {
+                        "type": "string"
+                    },
+                    "origin_ip": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Dist": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "$ref": "#/components/schemas/Dist"
+                    },
+                    "dist_id": {
+                        "type": "string"
+                    },
+                    "dist_ip": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Stream": {
+                "type": "object",
+                "properties": {
+                    "stream_id": {
+                        "type": "string"
+                    },
+                    "stream_ip": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "description": "Stream Status",
+                        "enum": [
+                            "active",
+                            "inactive",
+                            "down"
+                        ],
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "responses": {
+            "200": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "result": {
+                                    "description": "Result obtained",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "OK"
+            },
+            "403": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "result": {
+                                    "description": "Message obtained",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "Invalid Credentials"
+            },
+            "405": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "result": {
+                                    "description": "Message obtained",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "Request Not supported"
+            },
+            "409": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "result": {
+                                    "description": "Message obtained",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "Conflict"
+            }
+        },
+        "requestBodies": {
+            "ArchiveDel": {
+                "description": "Delete Archive Details",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ArchiveDel"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ArchiveDel"
+                        }
+                    }
+                },
+                "required": true
+            },
+            "ReqStream": {
+                "description": "Request Stream Details",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ReqStream"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ReqStream"
+                        }
+                    }
+                },
+                "required": true
+            },
+            "Archive": {
+                "description": "Archive Details",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Archive"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Archive"
+                        }
+                    }
+                },
+                "required": true
+            },
+            "Users": {
+                "description": "User Details",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Users"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Users"
+                        }
+                    }
+                },
+                "required": true
+            },
+            "Origin": {
+                "description": "Origin IP & ID Details",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Origin"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Origin"
+                        }
+                    }
+                },
+                "required": true
+            },
+            "Dist": {
+                "description": "Distribution IP & ID Details",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Dist"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Dist"
+                        }
+                    }
+                },
+                "required": true
+            },
+            "Stream": {
+                "description": "Stream IP & ID Details",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Stream"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Stream"
+                        }
+                    }
+                },
+                "required": true
+            }
+        }
     }
-  } ],
-  "paths" : {
-    "/request" : {
-      "post" : {
-        "summary" : "Request Stream",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ],
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/ReqStream"
-        }
-      }
-    },
-    "/origin" : {
-      "post" : {
-        "summary" : "Add origin",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ],
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/Origin"
-        }
-      },
-      "delete" : {
-        "summary" : "Delete origin",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ],
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/Origin"
-        }
-      },
-      "get" : {
-        "summary" : "Get Origins Present",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ]
-      }
-    },
-    "/dist" : {
-      "post" : {
-        "summary" : "Add Distribution",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ],
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/Dist"
-        }
-      },
-      "delete" : {
-        "summary" : "Delete distribution",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ],
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/Dist"
-        }
-      },
-      "get" : {
-        "summary" : "Get Distributions Present",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ]
-      }
-    },
-    "/streams" : {
-      "post" : {
-        "summary" : "Add Streams",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ],
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/Stream"
-        }
-      },
-      "delete" : {
-        "summary" : "Delete stream",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ],
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/Stream"
-        }
-      },
-      "get" : {
-        "summary" : "Get Streams Present",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ]
-      }
-    },
-    "/archive" : {
-      "post" : {
-        "summary" : "Add Archives",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ],
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/Archive"
-        }
-      },
-      "delete" : {
-        "summary" : "Delete archives",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ],
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/ArchiveDel"
-        }
-      },
-      "get" : {
-        "summary" : "Get Archives Present",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Invalid Credentials",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters" : [ {
-          "in" : "header",
-          "name" : "username",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        }, {
-          "in" : "header",
-          "name" : "password",
-          "schema" : {
-            "type" : "string"
-          },
-          "required" : true
-        } ]
-      }
-    },
-    "/user" : {
-      "post" : {
-        "summary" : "Add User",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/Users"
-        }
-      },
-      "delete" : {
-        "summary" : "Delete user",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "requestBody" : {
-          "$ref" : "#/components/requestBodies/Users"
-        }
-      },
-      "get" : {
-        "summary" : "Get Users Present",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Result obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409" : {
-            "description" : "Conflict",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "405" : {
-            "description" : "Request Not supported",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "result" : {
-                      "type" : "string",
-                      "description" : "Message obtained"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "components" : {
-    "schemas" : {
-      "ReqStream" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "category" : {
-            "$ref" : "#/components/schemas/ReqStream"
-          }
-        }
-      },
-      "ArchiveDel" : {
-        "type" : "object",
-        "properties" : {
-          "job" : {
-            "type" : "string"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "category" : {
-            "$ref" : "#/components/schemas/ArchiveDel"
-          }
-        }
-      },
-      "Archive" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "start" : {
-            "type" : "string"
-          },
-          "end" : {
-            "type" : "string"
-          },
-          "sTime" : {
-            "type" : "string"
-          },
-          "eTime" : {
-            "type" : "string"
-          },
-          "job" : {
-            "type" : "string"
-          },
-          "category" : {
-            "$ref" : "#/components/schemas/Archive"
-          }
-        }
-      },
-      "Users" : {
-        "type" : "object",
-        "properties" : {
-          "username" : {
-            "type" : "string"
-          },
-          "password" : {
-            "type" : "string"
-          },
-          "category" : {
-            "$ref" : "#/components/schemas/Users"
-          }
-        }
-      },
-      "Origin" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "ip" : {
-            "type" : "string"
-          },
-          "category" : {
-            "$ref" : "#/components/schemas/Origin"
-          }
-        }
-      },
-      "Dist" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "ip" : {
-            "type" : "string"
-          },
-          "category" : {
-            "$ref" : "#/components/schemas/Dist"
-          }
-        }
-      },
-      "Stream" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "ip" : {
-            "type" : "string"
-          },
-          "category" : {
-            "$ref" : "#/components/schemas/Stream"
-          }
-        }
-      }
-    },
-    "requestBodies" : {
-      "ArchiveDel" : {
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/ArchiveDel"
-            }
-          },
-          "application/xml" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/ArchiveDel"
-            }
-          }
-        },
-        "description" : "Delete Archive Details",
-        "required" : true
-      },
-      "ReqStream" : {
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/ReqStream"
-            }
-          },
-          "application/xml" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/ReqStream"
-            }
-          }
-        },
-        "description" : "Request Stream Details",
-        "required" : true
-      },
-      "Archive" : {
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Archive"
-            }
-          },
-          "application/xml" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Archive"
-            }
-          }
-        },
-        "description" : "Archive Details",
-        "required" : true
-      },
-      "Users" : {
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Users"
-            }
-          },
-          "application/xml" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Users"
-            }
-          }
-        },
-        "description" : "User Details",
-        "required" : true
-      },
-      "Origin" : {
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Origin"
-            }
-          },
-          "application/xml" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Origin"
-            }
-          }
-        },
-        "description" : "Origin IP & ID Details",
-        "required" : true
-      },
-      "Dist" : {
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Dist"
-            }
-          },
-          "application/xml" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Dist"
-            }
-          }
-        },
-        "description" : "Distribution IP & ID Details",
-        "required" : true
-      },
-      "Stream" : {
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Stream"
-            }
-          },
-          "application/xml" : {
-            "schema" : {
-              "$ref" : "#/components/schemas/Stream"
-            }
-          }
-        },
-        "description" : "Stream IP & ID Details",
-        "required" : true
-      }
-    },
-    "responses" : {
-      "200" : {
-        "description" : "OK",
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "type" : "object",
-              "properties" : {
-                "result" : {
-                  "type" : "string",
-                  "description" : "Result obtained"
-                }
-              }
-            }
-          }
-        }
-      },
-      "403" : {
-        "description" : "Invalid Credentials",
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "type" : "object",
-              "properties" : {
-                "result" : {
-                  "type" : "string",
-                  "description" : "Message obtained"
-                }
-              }
-            }
-          }
-        }
-      },
-      "405" : {
-        "description" : "Request Not supported",
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "type" : "object",
-              "properties" : {
-                "result" : {
-                  "type" : "string",
-                  "description" : "Message obtained"
-                }
-              }
-            }
-          }
-        }
-      },
-      "409" : {
-        "description" : "Conflict",
-        "content" : {
-          "application/json" : {
-            "schema" : {
-              "type" : "object",
-              "properties" : {
-                "result" : {
-                  "type" : "string",
-                  "description" : "Message obtained"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
 }
