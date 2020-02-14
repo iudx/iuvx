@@ -5,6 +5,7 @@ import threading
 from MQTTPubSub import MQTTPubSub
 import OriginCelery as oc
 import json
+import celery.exceptions
 
 
 class Origin():
@@ -29,31 +30,28 @@ class Origin():
     def on_message(self, client, userdata, message):
 
         msg = message.payload.decode("UTF-8")
-        self.action = message.topic
-        msg_dict = json.loads(self.msg)
+        action = message.topic
+        msg_dict = json.loads(msg)
         print(msg_dict)
 
         if msg_dict["origin_id"] != self.ORIGIN_ID:
             print("Oh no returning")
             return
 
-        if self.action == "origin/ffmpeg/stream/spawn":
-            res = oc.OriginFfmpegSpawn.delay(self.msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+        if action == "origin/ffmpeg/stream/spawn":
+            res = oc.OriginFfmpegSpawn.delay(msg)
+            self.monitorTaskResult(res)
 
-        if self.action == "origin/ffmpeg/dist/spawn":
-            res = oc.OriginFfmpegDistSpawn.delay(self.msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+        if action == "origin/ffmpeg/dist/spawn":
+            res = oc.OriginFfmpegDistSpawn.delay(msg)
+            self.monitorTaskResult(res)
 
-        if self.action == "origin/ffmpeg/dist/respawn":
-            res = oc.OriginFfmpegDistRespawn.delay(self.msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+        if action == "origin/ffmpeg/dist/respawn":
+            res = oc.OriginFfmpegDistRespawn.delay(msg)
+            self.monitorTaskResult(res)
 
-        self.action = "idle"
-        self.msg = ""
+        action = "idle"
+        msg = ""
 
     def defunct_cleaner(self):
         refresh_every = 10 # seconds
@@ -64,20 +62,22 @@ class Origin():
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
-        while(True):
-            if res.ready():
-                ret = res.get()
-                if not ret:
-                    pass
-                elif isinstance(ret, dict):
-                    self.client.publish(ret["topic"], ret["msg"])
-                    time.sleep(0.1)
-                elif isinstance(ret, list):
-                    for retDict in ret:
-                        self.client.publish(retDict["topic"], retDict["msg"])
-                        time.sleep(30)
-                break
-
+        try:
+            ret = res.get(timeout=5)
+            if not ret:
+                pass
+            elif isinstance(ret, dict):
+                self.client.publish(ret["topic"], ret["msg"])
+                time.sleep(0.1)
+            elif isinstance(ret, list):
+                for retDict in ret:
+                    self.client.publish(retDict["topic"], retDict["msg"])
+                    time.sleep(10)
+        except celery.exceptions.TimeoutError:
+            pass
+        except Exception as e:
+            pass 
+        return
 
 
 def main():

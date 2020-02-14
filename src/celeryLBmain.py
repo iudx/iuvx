@@ -3,7 +3,7 @@ import os
 import sys
 import time
 from MQTTPubSub import MQTTPubSub
-import threading
+import celery.exceptions
 
 '''
     TODO:
@@ -52,26 +52,22 @@ class LB():
         if action == "request/dist/streams":
             ''' TODO: Use this '''
             res = lbc.ReqAllDistStreams.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "origin/stat":
             lbc.OriginStat.delay(msg)
 
         if action == "db/origin/ffmpeg/stream/spawn":
             res = lbc.UpdateOriginStream.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "db/origin/ffmpeg/stream/delete":
             res = lbc.DeleteStreamFromDB.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "db/origin/ffmpeg/stream/deleteall":
             res = lbc.DeleteAllStreamsFromDB.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "dist/stat":
             ''' TODO: Why no ret '''
@@ -79,41 +75,42 @@ class LB():
 
         if action == "db/origin/ffmpeg/dist/spawn":
             res = lbc.OriginFfmpegDistPush.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "db/origin/ffmpeg/respawn":
             res = lbc.OriginFfmpegRespawn.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "db/dist/ffmpeg/respawn":
             ''' TODO: Message should come from diststatchecker '''
             res = lbc.OriginFFmpegDistRespawn.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "request/origin/streams":
             res = lbc.ReqAllOriginStreams.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
         if action == "stream/stat":
             res = lbc.StreamStat.delay(msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
+            self.monitorTaskResult(res)
 
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
-        ret = res.get()
-        if isinstance(ret, dict):
-            self.client.publish(ret["topic"],
-                                ret["msg"])
-        if isinstance(ret, list):
-            for retDict in ret:
-                self.client.publish(retDict["topic"],
-                                    retDict["msg"])
+        try:
+            ret = res.get(timeout=5)
+            if isinstance(ret, dict):
+                self.client.publish(ret["topic"],
+                                    ret["msg"])
+            if isinstance(ret, list):
+                for retDict in ret:
+                    self.client.publish(retDict["topic"],
+                                        retDict["msg"])
+        except celery.exceptions.TimeoutError:
+            pass
+        except Exception as e:
+            pass 
+        return
 
 
 def main():

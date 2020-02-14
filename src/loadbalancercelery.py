@@ -489,14 +489,14 @@ def InsertStream(msg):
                     {"topic": "origin/ffmpeg/stream/spawn", "msg": out},
                     {"topic": "origin/ffmpeg/stream/stat/spawn", "msg": out}]
         else:
-            logger.warning("Stream ID " + msg["stream_id"],
-                           " to ", origin["origin_id"],
+            logger.warning("Stream ID " + msg["stream_id"] + 
+                           " to " + origin["origin_id"] +
                            " already present.  Choose different ID.")
             return {"topic": "lbsresponse/stream/add",
                     "msg": json.dumps({"info": "present"})}
     else:
-        logger.warning("Stream IP " + msg["stream_ip"],
-                       " to ", origin["origin_id"], " already present")
+        logger.warning("Stream IP " + msg["stream_ip"] +
+                       " to " + origin["origin_id"] + " already present")
         return {"topic": "lbsresponse/stream/add",
                 "msg": json.dumps({"info": "fail"})}
 
@@ -509,14 +509,9 @@ def DeleteStreamFromDB(msg):
         Trigger: celeryLBmain.py
         Handles: delete entry for a stream from streamsTable and ffmpegProcsTable
     '''
-    logger.info(type(msg))
     logger.info(msg)
     msg = json.loads(msg)
-
-    #All items in the msg list should have the same stream_id   
- 
-    logger.info(type(msg))
-    streamid = {"stream_id": msg[0]["stream_id"]}
+    streamid = {"stream_id": msg["stream_id"]}
     logger.info("Deleted Stream " + str(streamid) + " from streamsTable and ffmpegProcTable")
     streamsTable.delete(streamid)
     ffmpegProcsTable.deleteMany(streamid)

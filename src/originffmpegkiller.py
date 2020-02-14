@@ -28,22 +28,20 @@ class OriginKiller():
     def on_message(self, client, userdata, message):
         ''' MQTT Callback function '''
         msg = message.payload.decode("UTF-8")
-        msg_dict = json.loads(msg)
-        print(msg_dict)
-        print(self.origin_id)
+        try:
+            msg = json.loads(msg)
+        except Exception as e:
+            print("Couldn't decode json")
         try: 
-            if isinstance(msg_dict, list): 
-                if msg_dict[0]["origin_id"] != self.origin_id:
+            for m in msg:
+                if m["origin_id"] != self.origin_id:
                     return
-            elif msg_dict["origin_id"] != self.origin_id:
-                return
-
-            res = oc.OriginFfmpegKillAll.delay(self.msg)
-            threading.Thread(target=self.monitorTaskResult,
-                             args=(res,)).start()
-
+                res = oc.OriginFfmpegKill.delay(json.dumps(m))
+                threading.Thread(target=self.monitorTaskResult,
+                                 args=(res,)).start()
         except Exception as e:
             print(e)
+        return
 
     def monitorTaskResult(self, res):
         ''' Celery task monitor '''
