@@ -20,6 +20,7 @@ services:
       - "1935:1935"
       - "8080:8080"
       - "8086:8086"
+      - "9000:9000"
     restart: on-failure
     env_file: 
       - ./scripts/docker_env.env

@@ -12,16 +12,21 @@ nohup influxd > /dev/null 2>&1 &
 PROJ_DIR=/vidiot/src
 
 # $ Arguments required to allow resizing
-tmux new-session -s "LB"  -d 
-tmux new-window -t "LB":0 -n "LB"
-tmux split-window -t "LB":0.0 -h 
-tmux split-window -t "LB":0.1 -v
-tmux split-window -t "LB":0.2 -v
+tmux new-session -s "LB" -n "LB" -d 
 
+tmux select-pane -t 0
+tmux send-keys "cd ${PROJ_DIR} && su vid -c 'celery -A loadbalancercelery worker --loglevel=info' " C-j
 
-tmux send-keys -t "LB":0.0 "cd ${PROJ_DIR} && python HTTPserver.py " C-j
-tmux send-keys -t "LB":0.1 "cd ${PROJ_DIR} && su vid -c 'celery -A loadbalancercelery worker --loglevel=info' " C-j
-tmux send-keys -t "LB":0.2 "cd ${PROJ_DIR} && python celeryLBmain.py " C-j
+tmux split-window -h
+tmux send-keys "cd ${PROJ_DIR} && python HTTPserver.py " C-j
+
+tmux split-window -t  -v
+tmux send-keys "cd ${PROJ_DIR} && python celeryLBmain.py " C-j
+
+tmux select-pane -t 0
+tmux split-window -t -v
+tmux send-keys "cd ${PROJ_DIR} && python AuthIntf.py " C-j
+
 
 
 # $ Arguments required to allow resizing
